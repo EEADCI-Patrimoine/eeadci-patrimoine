@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EEADCI – Gestion du Patrimoine</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  --gold:#C9922A;--gold-light:#E8B84B;--gold-pale:#FDF3DC;
+  --navy:#1A2744;--navy-mid:#253360;--navy-light:#3A4F82;
+  --cream:#FAF7F2;--white:#FFFFFF;
+  --gray-100:#F5F3EF;--gray-200:#E8E4DC;--gray-400:#9E9A92;--gray-600:#6B6760;--gray-800:#3A3830;
+  --green:#2D6A4F;--green-light:#E8F5EE;--red:#B5352A;--red-light:#FDEEEC;
+  --shadow-sm:0 2px 8px rgba(26,39,68,.08);--shadow-md:0 6px 24px rgba(26,39,68,.12);--shadow-lg:0 16px 48px rgba(26,39,68,.16);
+  --radius:12px;--radius-lg:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--gray-800);min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--navy);display:flex;flex-direction:column;z-index:100;box-shadow:var(--shadow-lg)}
+.sidebar-brand{padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand-logo{width:54px;height:54px;background:var(--white);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;padding:4px;box-shadow:0 4px 16px rgba(0,0,0,.25);overflow:hidden}
+.brand-logo img{width:100%;height:100%;object-fit:contain}
+.brand-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--white);line-height:1.3}
+.brand-sub{font-size:11px;color:var(--gold-light);margin-top:2px;letter-spacing:.4px}
+.sidebar-nav{flex:1;padding:14px 10px;overflow-y:auto}
+.nav-section-title{font-size:10px;font-weight:600;color:var(--gold-light);letter-spacing:1.5px;text-transform:uppercase;padding:8px 12px 4px;opacity:.7}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;color:rgba(255,255,255,.65);font-size:13px;cursor:pointer;transition:all .16s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,.07);color:var(--white)}
+.nav-item.active{background:rgba(201,146,42,.18);color:var(--gold-light);font-weight:500}
+.sidebar-footer{padding:14px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:rgba(255,255,255,.3);text-align:center}
+
+/* MAIN */
+.main{margin-left:260px;min-height:100vh}
+.topbar{background:var(--white);border-bottom:1px solid var(--gray-200);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow-sm)}
+.topbar-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:600;color:var(--navy)}
+.badge-count{background:var(--gold-pale);color:var(--gold);font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid rgba(201,146,42,.3)}
+.content{padding:28px}
+
+/* PAGES */
+.page{display:none}
+.page.active{display:block}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:var(--white);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);position:relative;overflow:hidden;transition:transform .2s}
+.stat-card:hover{transform:translateY(-2px)}
+.stat-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--gold)}
+.stat-card.blue::before{background:var(--navy-light)}
+.stat-card.green::before{background:var(--green)}
+.stat-card.red::before{background:var(--red)}
+.stat-card.purple::before{background:#7c5cbf}
+.stat-label{font-size:11px;font-weight:500;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.stat-value{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--navy);line-height:1}
+.stat-sub{font-size:11px;color:var(--gray-600);margin-top:3px}
+
+/* CARD */
+.card{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);overflow:hidden;margin-bottom:20px}
+.card-header{padding:18px 22px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:var(--navy)}
+.card-body{padding:22px}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--gray-200)}
+tbody tr{border-bottom:1px solid var(--gray-100);transition:background .14s;cursor:pointer}
+tbody tr:hover{background:var(--gold-pale)}
+tbody td{padding:11px 12px;font-size:13px}
+
+/* TAGS */
+.tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
+.tag-gold{background:var(--gold-pale);color:var(--gold);border:1px solid rgba(201,146,42,.3)}
+.tag-navy{background:rgba(58,79,130,.1);color:var(--navy-light)}
+.tag-green{background:var(--green-light);color:var(--green)}
+.tag-red{background:var(--red-light);color:var(--red)}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid.three{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.span2{grid-column:span 2}
+.form-group.span3{grid-column:span 3}
+label{font-size:12px;font-weight:500;color:var(--gray-600)}
+input[type=text],input[type=email],input[type=tel],input[type=number],input[type=date],select,textarea{width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--gray-800);background:var(--white);transition:border-color .16s;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,146,42,.1)}
+textarea{resize:vertical;min-height:72px}
+.form-section{margin-bottom:24px}
+.form-section-title{font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--navy);padding-bottom:9px;border-bottom:2px solid var(--gold-pale);margin-bottom:16px;display:flex;align-items:center;gap:7px}
+.form-section-title::before{content:'';width:3px;height:16px;background:var(--gold);border-radius:2px;flex-shrink:0}
+.checkbox-group{display:flex;flex-wrap:wrap;gap:8px}
+.checkbox-item{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid var(--gray-200);border-radius:8px;cursor:pointer;font-size:12px;color:var(--gray-600);background:var(--white);transition:all .14s}
+.checkbox-item:hover{border-color:var(--gold);background:var(--gold-pale)}
+.checkbox-item input{width:13px;height:13px;accent-color:var(--gold);margin:0;padding:0}
+.divider{height:1px;background:var(--gray-200);margin:16px 0}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .16s}
+.btn-primary{background:var(--gold);color:var(--white);box-shadow:0 4px 12px rgba(201,146,42,.3)}
+.btn-primary:hover{background:#b5821f;transform:translateY(-1px)}
+.btn-secondary{background:var(--white);color:var(--gray-600);border:1.5px solid var(--gray-200)}
+.btn-secondary:hover{background:var(--gray-100)}
+.btn-navy{background:var(--navy);color:var(--white)}
+.btn-navy:hover{background:var(--navy-mid)}
+.btn-danger{background:var(--red);color:var(--white)}
+.btn-danger:hover{background:#8e2920}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-group{display:flex;gap:9px;margin-top:18px}
+
+/* PAGE HEADER */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;gap:14px}
+.page-header-info h2{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:var(--navy)}
+.page-header-info p{font-size:13px;color:var(--gray-400);margin-top:3px}
+.filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.search-box{position:relative;flex:1;min-width:180px}
+.search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--gray-400);pointer-events:none}
+.search-box input{padding-left:34px}
+
+/* WELCOME BANNER */
+.welcome-banner{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 60%,var(--navy-light) 100%);border-radius:var(--radius-lg);padding:24px 28px;margin-bottom:22px;position:relative;overflow:hidden;color:var(--white)}
+.welcome-title{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:var(--white);margin-bottom:5px}
+.welcome-sub{font-size:13px;color:rgba(255,255,255,.65)}
+.gold-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(201,146,42,.25);color:var(--gold-light);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;margin-top:10px;border:1px solid rgba(201,146,42,.3)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,39,68,.55);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+.modal-overlay.active{display:flex}
+.modal{background:var(--white);border-radius:var(--radius-lg);max-width:820px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--white);z-index:1;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+.modal-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--navy)}
+.modal-body{padding:22px}
+.close-btn{width:30px;height:30px;border-radius:50%;border:none;background:var(--gray-100);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--gray-600);transition:all .14s}
+.close-btn:hover{background:var(--gray-200)}
+.detail-item{padding:10px 0;border-bottom:1px solid var(--gray-100)}
+.detail-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:2px}
+.detail-value{font-size:13px;color:var(--gray-800)}
+
+/* TOAST */
+.toast-container{position:fixed;top:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:7px}
+.toast{padding:12px 16px;border-radius:10px;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:500;box-shadow:var(--shadow-md);animation:slideIn .25s ease;max-width:300px}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-success{background:var(--white);color:var(--green);border-left:4px solid var(--green)}
+.toast-error{background:var(--white);color:var(--red);border-left:4px solid var(--red)}
+
+/* INVENTAIRE TABLE */
+.inv-table{width:100%;border-collapse:collapse;font-size:13px}
+.inv-table thead th{background:var(--gray-100);padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)}
+.inv-table tbody tr{border-bottom:1px solid var(--gray-100)}
+.inv-table td{padding:5px 6px}
+.inv-cell{padding:5px 8px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:13px;font-family:inherit;background:var(--white);color:var(--gray-800);width:100%}
+.inv-cell:focus{border-color:var(--gold);outline:none}
+.inv-del-btn{background:none;border:none;cursor:pointer;color:var(--red);font-size:20px;line-height:1;padding:2px 4px}
+.inv-section{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+.inv-section-head{padding:11px 16px;background:var(--gray-100);border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.inv-section-head-title{font-size:13px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:7px}
+.inv-section-head-title::before{content:'';width:3px;height:14px;background:var(--gold);border-radius:2px;flex-shrink:0}
+.inv-section-body{padding:0}
+.inv-section-body.collapsed{display:none}
+.empty-state{text-align:center;padding:48px 20px;color:var(--gray-400)}
+.empty-state h3{font-size:15px;font-weight:500;color:var(--gray-600);margin-top:12px}
+
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo"><img src="data:image/png;base64,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" alt="Logo AD"></div>
+    <div class="brand-name">Assemblées de Dieu</div>
+    <div class="brand-sub">Côte d'Ivoire — EEADCI</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-title">Navigation</div>
+    <button class="nav-item active" onclick="showPage('dashboard')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Tableau de bord
+    </button>
+    <div class="nav-section-title" style="margin-top:10px">Listes</div>
+    <button class="nav-item" onclick="showPage('eglise-list')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M9 21V11l3-3 3 3v10M5 21V16l2-2 2 2v5M15 21v-5l2-2 2 2v5"/></svg>
+      Églises locales
+    </button>
+    <button class="nav-item" onclick="showPage('parcelle-list')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Parcelles non valorisées
+    </button>
+    <button class="nav-item" onclick="showPage('inventaire-list')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+      Inventaire mobilier
+    </button>
+    <div class="nav-section-title" style="margin-top:10px">Saisie</div>
+    <button class="nav-item" onclick="showPage('eglise-form')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nouvelle église
+    </button>
+    <button class="nav-item" onclick="showPage('parcelle-form')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nouvelle parcelle
+    </button>
+    <button class="nav-item" onclick="showPage('inventaire-form')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nouvel inventaire
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    Église Évangélique des Assemblées<br>de Dieu de Côte d'Ivoire — EEADCI<br>© 2025
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Tableau de bord</div>
+    <div class="topbar-actions"><span class="badge-count">Côte d'Ivoire</span></div>
+  </div>
+  <div class="content">
+
+    <!-- ==================== DASHBOARD ====================  -->
+    <div class="page active" id="page-dashboard">
+      <div class="welcome-banner">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:6px">
+          <div style="background:var(--white);border-radius:8px;padding:4px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <img src="" id="banner-logo" style="width:44px;height:44px;object-fit:contain">
+          </div>
+          <div class="welcome-title">Bienvenue sur la plateforme patrimoniale</div>
+        </div>
+        <div class="welcome-sub">Église Évangélique des Assemblées de Dieu de Côte d'Ivoire — Recensement et suivi du patrimoine</div>
+        <div class="gold-pill">✝ EEADCI — Commission Patrimoine BEN</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Églises recensées</div><div class="stat-value" id="stat-eglises">0</div><div class="stat-sub">Formulaires</div></div>
+        <div class="stat-card blue"><div class="stat-label">Parcelles non valorisées</div><div class="stat-value" id="stat-parcelles">0</div><div class="stat-sub">Formulaires</div></div>
+        <div class="stat-card green"><div class="stat-label">Membres baptisés</div><div class="stat-value" id="stat-membres">0</div><div class="stat-sub">Total assemblées</div></div>
+        <div class="stat-card red"><div class="stat-label">Parcelles sans titre</div><div class="stat-value" id="stat-sans-titre">0</div><div class="stat-sub">À régulariser</div></div>
+        <div class="stat-card purple"><div class="stat-label">Inventaires</div><div class="stat-value" id="stat-inventaires">0</div><div class="stat-sub">Fiches mobilier</div></div>
+      </div>
+      <!-- CARTE -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title">Carte du patrimoine</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--navy-light)"><span style="width:10px;height:10px;border-radius:50%;background:var(--navy-light);display:inline-block"></span>Églises</span>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gold)"><span style="width:10px;height:10px;background:var(--gold);transform:rotate(45deg);display:inline-block"></span>Parcelles</span>
+            <button class="btn btn-sm btn-secondary" onclick="resetMapView()">Recentrer</button>
+          </div>
+        </div>
+        <div id="patrimoine-map" style="height:400px;width:100%"></div>
+        <div id="map-hint" style="display:none;padding:10px 18px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-200)">
+          💡 Renseignez les coordonnées GPS dans les formulaires (ex : <strong>5.3166, -4.0333</strong>) pour afficher les points sur la carte.
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Dernières églises</div><button class="btn btn-sm btn-secondary" onclick="showPage('eglise-list')">Voir tout</button></div>
+          <div id="recent-eglises"><div class="empty-state"><p>Aucune église</p></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Dernières parcelles</div><button class="btn btn-sm btn-secondary" onclick="showPage('parcelle-list')">Voir tout</button></div>
+          <div id="recent-parcelles"><div class="empty-state"><p>Aucune parcelle</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== EGLISE LIST ====================  -->
+    <div class="page" id="page-eglise-list">
+      <div class="page-header">
+        <div class="page-header-info">
+          <h2>Églises locales</h2>
+          <p>Formulaires officiels de recensement EEADCI</p>
+        </div>
+        <button class="btn btn-primary" onclick="showPage('eglise-form')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouveau recensement
+        </button>
+      </div>
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" placeholder="Rechercher une église…" oninput="filterEglises(this.value)">
+        </div>
+        <select onchange="filterEglisesRegion(this.value)" style="min-width:160px">
+          <option value="">Toutes les régions</option>
+        </select>
+      </div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom officiel</th>
+              <th>Temple / Local</th>
+              <th>Région eccl.</th>
+              <th>District</th>
+              <th>Commune</th>
+              <th>Pasteur principal</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="eglise-tbody">
+            <tr><td colspan="8"><div class="empty-state" style="padding:40px 0">
+              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 21h18M9 21V11l3-3 3 3v10"/></svg>
+              <h3>Aucune église enregistrée</h3>
+              <p>Cliquez sur "Nouveau recensement" pour commencer</p>
+            </div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== EGLISE FORM ====================  -->
+    <div class="page" id="page-eglise-form">
+      <div class="page-header">
+        <div class="page-header-info">
+          <h2 id="eglise-form-title">Recensement d'une église locale</h2>
+          <p>Formulaire officiel EEADCI</p>
+        </div>
+        <button class="btn btn-secondary" onclick="showPage('eglise-list')">← Retour à la liste</button>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <input type="hidden" id="eglise-edit-id">
+
+          <!-- I. IDENTIFICATION GÉNÉRALE -->
+          <div class="form-section">
+            <div class="form-section-title">I. Identification générale de l'église locale</div>
+            <div class="form-grid">
+              <div class="form-group span2">
+                <label>Nom officiel de l'Église *</label>
+                <input type="text" id="eg-nom" placeholder="Nom officiel…">
+              </div>
+              <div class="form-group">
+                <label>Temple / Dénomination locale</label>
+                <input type="text" id="eg-temple" placeholder="Ex: Temple Bethel…">
+              </div>
+              <div class="form-group">
+                <label>Code de l'Assemblée</label>
+                <input type="text" id="eg-code" placeholder="Ex: E01/02/03/04/00001">
+              </div>
+              <div class="form-group">
+                <label>Région ecclésiastique *</label>
+                <input type="text" id="eg-region" placeholder="Ex: Région Abidjan Sud…">
+              </div>
+              <div class="form-group">
+                <label>District / Secteur</label>
+                <input type="text" id="eg-district">
+              </div>
+              <div class="form-group">
+                <label>Commune / Sous-préfecture</label>
+                <input type="text" id="eg-commune">
+              </div>
+              <div class="form-group">
+                <label>Quartier / Village</label>
+                <input type="text" id="eg-quartier">
+              </div>
+              <div class="form-group span2">
+                <label>Adresse complète</label>
+                <input type="text" id="eg-adresse">
+              </div>
+              <div class="form-group">
+                <label>Téléphone</label>
+                <input type="tel" id="eg-tel">
+              </div>
+              <div class="form-group">
+                <label>Email (si existant)</label>
+                <input type="email" id="eg-email">
+              </div>
+              <div class="form-group">
+                <label>Année d'implantation</label>
+                <input type="number" id="eg-annee" min="1900" max="2099" placeholder="Ex: 1998">
+              </div>
+              <div class="form-group">
+                <label>Statut de l'église</label>
+                <select id="eg-statut">
+                  <option value="">-- Sélectionner --</option>
+                  <option>Église autonome</option>
+                  <option>Annexe</option>
+                  <option>Poste d'évangélisation</option>
+                  <option>Champ missionnaire</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- II. RESPONSABLES -->
+          <div class="form-section">
+            <div class="form-section-title">II. Responsables de l'église</div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy-light);margin-bottom:10px">Pasteur Principal</div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Nom et prénoms</label>
+                <input type="text" id="eg-pasteur-nom">
+              </div>
+              <div class="form-group">
+                <label>Téléphone</label>
+                <input type="tel" id="eg-pasteur-tel">
+              </div>
+              <div class="form-group">
+                <label>Date de prise de fonction</label>
+                <input type="date" id="eg-pasteur-date">
+              </div>
+              <div class="form-group span3">
+                <label>Statut</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="pasteur-statut" value="ordonné"> Pasteur ordonné</label>
+                  <label class="checkbox-item"><input type="radio" name="pasteur-statut" value="non ordonné"> Pasteur non ordonné</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy-light);margin-bottom:10px">Pasteur Adjoint</div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Nom et prénoms</label>
+                <input type="text" id="eg-adjoint-nom">
+              </div>
+              <div class="form-group">
+                <label>Téléphone</label>
+                <input type="tel" id="eg-adjoint-tel">
+              </div>
+              <div class="form-group">
+                <label>Date de prise de fonction</label>
+                <input type="date" id="eg-adjoint-date">
+              </div>
+              <div class="form-group span3">
+                <label>Statut</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="adjoint-statut" value="ordonné"> Pasteur ordonné</label>
+                  <label class="checkbox-item"><input type="radio" name="adjoint-statut" value="non ordonné"> Pasteur non ordonné</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy-light);margin-bottom:10px">Responsables Patrimoine</div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Responsable patrimoine 1 — Nom</label>
+                <input type="text" id="eg-patr1-nom">
+              </div>
+              <div class="form-group">
+                <label>Contacts</label>
+                <input type="text" id="eg-patr1-contact">
+              </div>
+              <div class="form-group"></div>
+              <div class="form-group">
+                <label>Responsable patrimoine 2 — Nom</label>
+                <input type="text" id="eg-patr2-nom">
+              </div>
+              <div class="form-group">
+                <label>Contacts</label>
+                <input type="text" id="eg-patr2-contact">
+              </div>
+            </div>
+          </div>
+
+          <!-- III. EFFECTIF -->
+          <div class="form-section">
+            <div class="form-section-title">III. Effectif des membres</div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Total membres baptisés</label>
+                <input type="number" id="eg-baptises" min="0" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label>Adhérents non baptisés</label>
+                <input type="number" id="eg-adherents" min="0" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label>Effectif moyen culte dominical</label>
+                <input type="number" id="eg-culte" min="0" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label>Hommes</label>
+                <input type="number" id="eg-hommes" min="0" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label>Femmes</label>
+                <input type="number" id="eg-femmes" min="0" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label>Jeunes</label>
+                <input type="number" id="eg-jeunes" min="0" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label>Enfants</label>
+                <input type="number" id="eg-enfants" min="0" placeholder="0">
+              </div>
+            </div>
+          </div>
+
+          <!-- IV. INFRASTRUCTURES IMMOBILIÈRES -->
+          <div class="form-section">
+            <div class="form-section-title">IV. Infrastructures immobilières disponibles</div>
+            <p style="font-size:12px;color:var(--gray-400);margin-bottom:14px;margin-top:-6px">Renseignez chaque bâtiment existant. Cliquez sur l'en-tête pour déplier/replier une fiche.</p>
+            <div id="eg-infra-container"></div>
+          </div>
+
+          <!-- V. ÉQUIPEMENTS MOBILIERS -->
+          <div class="form-section">
+            <div class="form-section-title">V. Équipements mobiliers disponibles</div>
+            <p style="font-size:12px;color:var(--gray-400);margin-bottom:14px;margin-top:-6px">Mobilier, instruments de musique et véhicules de l'assemblée.</p>
+            <div id="eg-mobilier-container"></div>
+          </div>
+
+          <!-- V. SITUATION ADMINISTRATIVE -->
+          <div class="form-section">
+            <div class="form-section-title">VI. Situation administrative</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Église connue des autorités locales ?</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="autorites" value="Oui"> Oui</label>
+                  <label class="checkbox-item"><input type="radio" name="autorites" value="Non"> Non</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Pasteur(s) participant à la vie administrative ?</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="vie-admin" value="Oui"> Oui</label>
+                  <label class="checkbox-item"><input type="radio" name="vie-admin" value="Non"> Non</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VII. BESOINS EN TERRAINS -->
+          <div class="form-section">
+            <div class="form-section-title">VII. Observations et besoins en terrains</div>
+            <div class="form-group">
+              <textarea id="eg-observations" rows="4" placeholder="Besoins en terrains, observations diverses…"></textarea>
+            </div>
+          </div>
+
+          <!-- VIII. VALIDATION -->
+          <div class="form-section">
+            <div class="form-section-title">VIII. Validation</div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Nom du Délégué Régional</label>
+                <input type="text" id="eg-delegue">
+              </div>
+              <div class="form-group">
+                <label>Signature</label>
+                <input type="text" id="eg-signature" placeholder="Nom / paraphe">
+              </div>
+              <div class="form-group">
+                <label>Date de validation</label>
+                <input type="date" id="eg-date-valid">
+              </div>
+              <div class="form-group">
+                <label>Visa Bureau de Région EEADCI</label>
+                <input type="text" id="eg-visa">
+              </div>
+              <div class="form-group">
+                <label>Coordonnées GPS</label>
+                <input type="text" id="eg-gps" placeholder="Ex: 5.3166, -4.0333">
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="saveEglise()">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Enregistrer
+            </button>
+            <button class="btn btn-secondary" onclick="resetEgliseForm()">Réinitialiser</button>
+            <button class="btn btn-secondary" onclick="showPage('eglise-list')">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PARCELLE LIST ====================  -->
+    <div class="page" id="page-parcelle-list">
+      <div class="page-header">
+        <div class="page-header-info">
+          <h2>Parcelles non mises en valeur</h2>
+          <p>Recensement EEADCI — Commission Patrimoine</p>
+        </div>
+        <button class="btn btn-primary" onclick="showPage('parcelle-form')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouvelle parcelle
+        </button>
+      </div>
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" placeholder="Rechercher une parcelle…" oninput="filterParcelles(this.value)">
+        </div>
+        <select onchange="filterParcellesStatut(this.value)" style="min-width:160px">
+          <option value="">Tous les statuts</option>
+          <option>Propriété EEADCI</option>
+          <option>Bail</option>
+          <option>Don</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Église locale</th>
+              <th>Région EEADCI</th>
+              <th>Commune</th>
+              <th>N° lot/parcelle</th>
+              <th>Superficie</th>
+              <th>Statut juridique</th>
+              <th>Titre foncier</th>
+              <th>Occupation</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="parcelle-tbody">
+            <tr><td colspan="9"><div class="empty-state" style="padding:40px 0">
+              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <h3>Aucune parcelle enregistrée</h3>
+              <p>Cliquez sur "Nouvelle parcelle" pour commencer</p>
+            </div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== PARCELLE FORM ====================  -->
+    <div class="page" id="page-parcelle-form">
+      <div class="page-header">
+        <div class="page-header-info">
+          <h2 id="parcelle-form-title">Recensement d'une parcelle non mise en valeur</h2>
+          <p>Formulaire officiel EEADCI — Commission Patrimoine</p>
+        </div>
+        <button class="btn btn-secondary" onclick="showPage('parcelle-list')">← Retour à la liste</button>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <input type="hidden" id="parcelle-edit-id">
+
+          <!-- INFOS GÉNÉRALES -->
+          <div class="form-section">
+            <div class="form-section-title">Informations générales</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nom de l'église locale *</label>
+                <input type="text" id="pa-eglise">
+              </div>
+              <div class="form-group">
+                <label>Code / N° d'identification</label>
+                <input type="text" id="pa-code">
+              </div>
+              <div class="form-group">
+                <label>Région EEADCI</label>
+                <input type="text" id="pa-region-eeadci">
+              </div>
+              <div class="form-group">
+                <label>Délégué régional 1 — Nom</label>
+                <input type="text" id="pa-delegue1-nom">
+              </div>
+              <div class="form-group">
+                <label>Délégué régional 1 — Contacts</label>
+                <input type="text" id="pa-delegue1-contact">
+              </div>
+              <div class="form-group">
+                <label>Délégué régional 2 — Nom</label>
+                <input type="text" id="pa-delegue2-nom">
+              </div>
+              <div class="form-group">
+                <label>Délégué régional 2 — Contacts</label>
+                <input type="text" id="pa-delegue2-contact">
+              </div>
+              <div class="form-group">
+                <label>Région adm. / Département</label>
+                <input type="text" id="pa-region-admin">
+              </div>
+              <div class="form-group">
+                <label>Pasteur principal — Nom</label>
+                <input type="text" id="pa-pasteur-nom">
+              </div>
+              <div class="form-group">
+                <label>Pasteur principal — Contacts</label>
+                <input type="text" id="pa-pasteur-contact">
+              </div>
+              <div class="form-group">
+                <label>Date de l'inventaire</label>
+                <input type="date" id="pa-date-inventaire">
+              </div>
+              <div class="form-group">
+                <label>Personnes ayant effectué l'inventaire</label>
+                <input type="text" id="pa-inventeurs">
+              </div>
+            </div>
+          </div>
+
+          <!-- I. IDENTIFICATION GÉNÉRALE -->
+          <div class="form-section">
+            <div class="form-section-title">I. Identification générale</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Commune / Sous-préfecture</label>
+                <input type="text" id="pa-commune">
+              </div>
+              <div class="form-group">
+                <label>Quartier / Village / Lotissement</label>
+                <input type="text" id="pa-quartier">
+              </div>
+              <div class="form-group">
+                <label>Date du recensement</label>
+                <input type="date" id="pa-date-recens">
+              </div>
+              <div class="form-group">
+                <label>Nom de l'agent recenseur</label>
+                <input type="text" id="pa-agent">
+              </div>
+            </div>
+          </div>
+
+          <!-- II. IDENTIFICATION PARCELLE -->
+          <div class="form-section">
+            <div class="form-section-title">II. Identification de la parcelle</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>N° de lot / parcelle</label>
+                <input type="text" id="pa-lot">
+              </div>
+              <div class="form-group">
+                <label>N° du titre foncier (si existant)</label>
+                <input type="text" id="pa-titre-num">
+              </div>
+              <div class="form-group">
+                <label>Superficie (m² ou ha)</label>
+                <input type="text" id="pa-superficie" placeholder="Ex: 500 m²">
+              </div>
+              <div class="form-group">
+                <label>Coordonnées GPS (si disponibles)</label>
+                <input type="text" id="pa-gps" placeholder="Ex: 5.3166° N, 4.0333° O">
+              </div>
+              <div class="form-group span2">
+                <label>Nature du terrain</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="nature-terrain" value="Terrain urbain"> Terrain urbain</label>
+                  <label class="checkbox-item"><input type="radio" name="nature-terrain" value="Terrain rural"> Terrain rural</label>
+                  <label class="checkbox-item"><input type="radio" name="nature-terrain" value="Terrain agricole"> Terrain agricole</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Nature — Autre (préciser)</label>
+                <input type="text" id="pa-nature-autre">
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy-light);margin:14px 0 10px">Limites apparentes</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nord</label>
+                <input type="text" id="pa-nord">
+              </div>
+              <div class="form-group">
+                <label>Sud</label>
+                <input type="text" id="pa-sud">
+              </div>
+              <div class="form-group">
+                <label>Est</label>
+                <input type="text" id="pa-est">
+              </div>
+              <div class="form-group">
+                <label>Ouest</label>
+                <input type="text" id="pa-ouest">
+              </div>
+            </div>
+          </div>
+
+          <!-- INFOS JURIDIQUES -->
+          <div class="form-section">
+            <div class="form-section-title">Informations juridiques et administratives</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Statut juridique du bien</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="statut-juridique" value="Propriété EEADCI"> Propriété EEADCI</label>
+                  <label class="checkbox-item"><input type="radio" name="statut-juridique" value="Bail"> Bail</label>
+                  <label class="checkbox-item"><input type="radio" name="statut-juridique" value="Don"> Don</label>
+                  <label class="checkbox-item"><input type="radio" name="statut-juridique" value="Autre"> Autre</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>ACD / Titre foncier</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="acd" value="Oui"> Oui</label>
+                  <label class="checkbox-item"><input type="radio" name="acd" value="Non"> Non</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Référence titre (si Oui)</label>
+                <input type="text" id="pa-acd-ref">
+              </div>
+              <div class="form-group">
+                <label>Lettre attribution / Attestation villageoise</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="attestation" value="Oui"> Oui</label>
+                  <label class="checkbox-item"><input type="radio" name="attestation" value="Non"> Non</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Date d'acquisition</label>
+                <input type="date" id="pa-date-acq">
+              </div>
+              <div class="form-group">
+                <label>Origine du financement</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="financement" value="Fonds propres"> Fonds propres</label>
+                  <label class="checkbox-item"><input type="radio" name="financement" value="Dons"> Dons</label>
+                  <label class="checkbox-item"><input type="radio" name="financement" value="Partenariat"> Partenariat</label>
+                  <label class="checkbox-item"><input type="radio" name="financement" value="Autre"> Autre</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- III. PROPRIÉTAIRE -->
+          <div class="form-section">
+            <div class="form-section-title">III. Identification du propriétaire / attributaire</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nom et prénoms / Dénomination sociale</label>
+                <input type="text" id="pa-proprio-nom">
+              </div>
+              <div class="form-group">
+                <label>N° CNI / RCCM (si société)</label>
+                <input type="text" id="pa-proprio-cni">
+              </div>
+              <div class="form-group">
+                <label>Adresse / Contacts téléphoniques</label>
+                <input type="text" id="pa-proprio-adresse">
+              </div>
+              <div class="form-group">
+                <label>Date d'acquisition</label>
+                <input type="date" id="pa-proprio-date-acq">
+              </div>
+              <div class="form-group span2">
+                <label>Mode d'acquisition</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="mode-acq" value="Attribution administrative"> Attribution administrative</label>
+                  <label class="checkbox-item"><input type="radio" name="mode-acq" value="Achat"> Achat</label>
+                  <label class="checkbox-item"><input type="radio" name="mode-acq" value="Donation"> Donation</label>
+                  <label class="checkbox-item"><input type="radio" name="mode-acq" value="Héritage"> Héritage</label>
+                  <label class="checkbox-item"><input type="radio" name="mode-acq" value="Autre"> Autre</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- IV. ÉTAT DE MISE EN VALEUR -->
+          <div class="form-section">
+            <div class="form-section-title">IV. État de mise en valeur</div>
+            <div class="form-grid">
+              <div class="form-group span2">
+                <label>Nature de l'occupation actuelle</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="occupation" value="Terrain nu"> Terrain nu</label>
+                  <label class="checkbox-item"><input type="radio" name="occupation" value="Clôturé"> Clôturé</label>
+                  <label class="checkbox-item"><input type="radio" name="occupation" value="Début de fondation"> Début de fondation</label>
+                  <label class="checkbox-item"><input type="radio" name="occupation" value="Construction inachevée"> Construction inachevée</label>
+                  <label class="checkbox-item"><input type="radio" name="occupation" value="Exploitation agricole partielle"> Exploitation agricole partielle</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Autre occupation (préciser)</label>
+                <input type="text" id="pa-occupation-autre">
+              </div>
+              <div class="form-group">
+                <label>Durée d'inoccupation (estimée)</label>
+                <input type="text" id="pa-duree" placeholder="Ex: 3 ans">
+              </div>
+              <div class="form-group">
+                <label>Présence d'occupants informels</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-item"><input type="radio" name="occupants" value="Oui"> Oui</label>
+                  <label class="checkbox-item"><input type="radio" name="occupants" value="Non"> Non</label>
+                </div>
+              </div>
+              <div class="form-group span2">
+                <label>Motif déclaré de non-mise en valeur</label>
+                <textarea id="pa-motif" rows="3"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- V. OBSERVATIONS -->
+          <div class="form-section">
+            <div class="form-section-title">V. Observations de l'agent recenseur</div>
+            <div class="form-group">
+              <textarea id="pa-observations" rows="4"></textarea>
+            </div>
+          </div>
+
+          <!-- VI. RECOMMANDATIONS -->
+          <div class="form-section">
+            <div class="form-section-title">VI. Recommandations</div>
+            <div class="form-group">
+              <div class="checkbox-group" id="reco-checkboxes">
+                <label class="checkbox-item"><input type="checkbox" value="Mise en demeure de mise en valeur"> Mise en demeure</label>
+                <label class="checkbox-item"><input type="checkbox" value="Vérification du titre foncier"> Vérification titre foncier</label>
+                <label class="checkbox-item"><input type="checkbox" value="Régularisation administrative"> Régularisation adm.</label>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:10px">
+              <label>Autre recommandation</label>
+              <input type="text" id="pa-reco-autre">
+            </div>
+          </div>
+
+          <!-- VII. SIGNATURES -->
+          <div class="form-section">
+            <div class="form-section-title">VII. Signatures</div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Agent recenseur</label>
+                <input type="text" id="pa-sig-agent">
+              </div>
+              <div class="form-group">
+                <label>Chef de service / Autorité compétente</label>
+                <input type="text" id="pa-sig-chef">
+              </div>
+              <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="pa-sig-date">
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="saveParcelle()">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Enregistrer
+            </button>
+            <button class="btn btn-secondary" onclick="resetParcelleForm()">Réinitialiser</button>
+            <button class="btn btn-secondary" onclick="showPage('parcelle-list')">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== INVENTAIRE LIST ====================  -->
+    <div class="page" id="page-inventaire-list">
+      <div class="page-header">
+        <div class="page-header-info">
+          <h2>Inventaire mobilier &amp; équipements</h2>
+          <p>Recensement des biens meubles des assemblées locales</p>
+        </div>
+        <button class="btn btn-primary" onclick="showPage('inventaire-form')">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nouvel inventaire
+        </button>
+      </div>
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" placeholder="Rechercher…" oninput="filterInv(this.value)">
+        </div>
+        <select id="inv-filter-eglise" onchange="filterInvEglise(this.value)" style="min-width:200px">
+          <option value="">Toutes les assemblées</option>
+        </select>
+      </div>
+      <div id="inv-list-container">
+        <div style="background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);margin-bottom:20px">
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Assemblée</th>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Date</th>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Agent</th>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Mobilier culte</th>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Instruments</th>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Sono / AV</th>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Électrique</th>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Véhicules</th>
+                  <th style="background:var(--gray-100);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200)">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inv-tbody">
+                <tr><td colspan="9" style="padding:40px;text-align:center;color:var(--gray-400)">Chargement…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== INVENTAIRE FORM ====================  -->
+    <div class="page" id="page-inventaire-form">
+      <div class="page-header">
+        <div class="page-header-info">
+          <h2 id="inv-form-title">Nouvel inventaire mobilier</h2>
+          <p>Recensement des biens meubles et équipements — EEADCI</p>
+        </div>
+        <button class="btn btn-secondary" onclick="showPage('inventaire-list')">&#8592; Retour</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <input type="hidden" id="inv-id">
+
+          <div class="form-section">
+            <div class="form-section-title">Identification générale</div>
+            <div class="form-grid three">
+              <div class="form-group span3">
+                <label>Assemblée locale *</label>
+                <select id="inv-eglise"><option value="">-- Sélectionner --</option></select>
+              </div>
+              <div class="form-group">
+                <label>Région EEADCI</label>
+                <input type="text" id="inv-region">
+              </div>
+              <div class="form-group">
+                <label>Date de l'inventaire</label>
+                <input type="date" id="inv-date">
+              </div>
+              <div class="form-group">
+                <label>Agent(s) recenseur(s)</label>
+                <input type="text" id="inv-agent">
+              </div>
+            </div>
+          </div>
+
+          <!-- Les 9 sections de catégories -->
+          <div id="inv-sections-container"></div>
+
+          <div class="form-section">
+            <div class="form-section-title">Observations &amp; remarques</div>
+            <div class="form-group">
+              <textarea id="inv-obs" rows="4" placeholder="Biens nécessitant réparation, biens manquants, recommandations…"></textarea>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-title">Validation</div>
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Responsable patrimoine</label>
+                <input type="text" id="inv-sig-resp">
+              </div>
+              <div class="form-group">
+                <label>Pasteur principal</label>
+                <input type="text" id="inv-sig-pasteur">
+              </div>
+              <div class="form-group">
+                <label>Date de validation</label>
+                <input type="date" id="inv-sig-date">
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="saveInv()">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+              Enregistrer
+            </button>
+            <button class="btn btn-secondary" onclick="showPage('inventaire-list')">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-eglise">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-eglise-title">Détail église</div>
+      <button class="close-btn" onclick="closeModal('modal-eglise')">×</button>
+    </div>
+    <div class="modal-body" id="modal-eglise-body"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-parcelle">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-parcelle-title">Détail parcelle</div>
+      <button class="close-btn" onclick="closeModal('modal-parcelle')">×</button>
+    </div>
+    <div class="modal-body" id="modal-parcelle-body"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-inv">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-inv-title">Inventaire mobilier</div>
+      <button class="close-btn" onclick="closeModal('modal-inv')">×</button>
+    </div>
+    <div class="modal-body" id="modal-inv-body"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<!-- ==================== FORMULAIRE ÉGLISE ==================== -->
+    
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── DATA ────────────────────────────────────────────────────────────────────
+var eglises    = JSON.parse(localStorage.getItem('eeadci-eglises')     || '[]');
+var parcelles  = JSON.parse(localStorage.getItem('eeadci-parcelles')   || '[]');
+var inventaires= JSON.parse(localStorage.getItem('eeadci-inventaires') || '[]');
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+var PAGE_TITLES = {
+  'dashboard':'Tableau de bord',
+  'eglise-list':'Églises locales','eglise-form':'Recensement église',
+  'parcelle-list':'Parcelles non valorisées','parcelle-form':'Recensement parcelle',
+  'inventaire-list':'Inventaire mobilier','inventaire-form':'Saisie inventaire'
+};
+var NAV_IDX = {'dashboard':0,'eglise-list':1,'parcelle-list':2,'inventaire-list':3,'eglise-form':4,'parcelle-form':5,'inventaire-form':6};
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  var pg = document.getElementById('page-'+name);
+  if (!pg) { showToast('Page introuvable : '+name,'error'); return; }
+  pg.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(i){ i.classList.remove('active'); });
+  var navItems = document.querySelectorAll('.nav-item');
+  if (navItems[NAV_IDX[name]]) navItems[NAV_IDX[name]].classList.add('active');
+  document.getElementById('topbar-title').textContent = PAGE_TITLES[name] || '';
+  if (name === 'dashboard')        { updateDashboard(); }
+  if (name === 'eglise-list')      { renderEglises(); }
+  if (name === 'parcelle-list')    { renderParcelles(); }
+  if (name === 'inventaire-list')  { renderInvList(); }
+  if (name === 'eglise-form')      { if (!document.getElementById('eglise-edit-id').value) { document.getElementById('eglise-form-title').textContent = "Nouveau recensement d'église"; resetEgliseForm(); initEgliseFormSections(); } }
+  if (name === 'parcelle-form')    { if (!document.getElementById('parcelle-edit-id').value) { document.getElementById('parcelle-form-title').textContent = 'Nouveau recensement de parcelle'; } }
+  if (name === 'inventaire-form')  { initInvForm(); }
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function getRadio(name) { var r=document.querySelector('input[name="'+name+'"]:checked'); return r?r.value:''; }
+function setRadio(name,val) { document.querySelectorAll('input[name="'+name+'"]').forEach(function(r){ r.checked=(r.value===val); }); }
+function getChecks(cid) { return Array.from(document.querySelectorAll('#'+cid+' input[type=checkbox]:checked')).map(function(c){ return c.value; }); }
+function setChecks(cid,vals) { document.querySelectorAll('#'+cid+' input[type=checkbox]').forEach(function(c){ c.checked=(vals||[]).indexOf(c.value)>=0; }); }
+function v(id) { var el=document.getElementById(id); return el?(el.value||'').trim():''; }
+function sv(id,val) { var el=document.getElementById(id); if(el) el.value=val||''; }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function detRow(label,value) { return '<div class="detail-item"><div class="detail-label">'+label+'</div><div class="detail-value">'+(value||'—')+'</div></div>'; }
+function showToast(msg,type) {
+  type=type||'success';
+  var t=document.createElement('div'); t.className='toast toast-'+type;
+  t.textContent=(type==='success'?'✅ ':'❌ ')+msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(function(){ t.remove(); },3500);
+}
+document.querySelectorAll('.modal-overlay').forEach(function(o){ o.addEventListener('click',function(e){ if(e.target===this) this.classList.remove('active'); }); });
+
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+function updateDashboard() {
+  document.getElementById('stat-eglises').textContent   = eglises.length;
+  document.getElementById('stat-parcelles').textContent  = parcelles.length;
+  document.getElementById('stat-inventaires').textContent= inventaires.length;
+  document.getElementById('stat-membres').textContent    = eglises.reduce(function(s,e){ return s+(parseInt(e.baptises)||0); },0);
+  document.getElementById('stat-sans-titre').textContent = parcelles.filter(function(p){ return p.acd==='Non'; }).length;
+  var re=document.getElementById('recent-eglises');
+  re.innerHTML = eglises.length ? '<table><thead><tr><th>Nom</th><th>Région</th><th>Statut</th></tr></thead><tbody>'+eglises.slice(0,5).map(function(e){ return '<tr onclick="viewEglise(\''+e.id+'\')"><td>'+e.nom+'</td><td>'+(e.region||'—')+'</td><td><span class="tag tag-green">'+(e.statut||'—')+'</span></td></tr>'; }).join('')+'</tbody></table>' : '<div class="empty-state"><p>Aucune église</p></div>';
+  var rp=document.getElementById('recent-parcelles');
+  rp.innerHTML = parcelles.length ? '<table><thead><tr><th>Église</th><th>Commune</th><th>Titre</th></tr></thead><tbody>'+parcelles.slice(0,5).map(function(p){ return '<tr onclick="viewParcelle(\''+p.id+'\')"><td>'+p.eglise+'</td><td>'+(p.commune||'—')+'</td><td>'+(p.acd==='Oui'?'<span class="tag tag-green">✓</span>':'<span class="tag tag-red">✗</span>')+'</td></tr>'; }).join('')+'</tbody></table>' : '<div class="empty-state"><p>Aucune parcelle</p></div>';
+  setTimeout(function(){ initMap(); refreshMap(); }, 80);
+}
+
+// ── CHURCHES ─────────────────────────────────────────────────────────────────
+function renderEglises(data) {
+  var list=data||eglises, tbody=document.getElementById('eglise-tbody');
+  if (!list.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><h3>Aucune église enregistrée</h3></div></td></tr>'; return; }
+  var tags={'Église autonome':'tag-green','Annexe':'tag-navy','Poste d\'évangélisation':'tag-gold','Champ missionnaire':'tag-red'};
+  tbody.innerHTML=list.map(function(e){ return '<tr onclick="viewEglise(\''+e.id+'\')"><td><strong>'+e.nom+'</strong></td><td>'+(e.temple||'—')+'</td><td>'+(e.region||'—')+'</td><td>'+(e.district||'—')+'</td><td>'+(e.commune||'—')+'</td><td>'+(e.pasteurNom||'—')+'</td><td><span class="tag '+(tags[e.statut]||'tag-navy')+'">'+(e.statut||'—')+'</span></td><td onclick="event.stopPropagation()"><button class="btn btn-sm btn-secondary" style="margin-right:4px" onclick="editEglise(\''+e.id+'\')">✏️</button><button class="btn btn-sm btn-danger" onclick="delEglise(\''+e.id+'\')">🗑</button></td></tr>'; }).join('');
+}
+function filterEglises(q) { renderEglises(q?eglises.filter(function(e){ return JSON.stringify(e).toLowerCase().includes(q.toLowerCase()); }):null); }
+function filterEglisesRegion(r) { renderEglises(r?eglises.filter(function(e){ return e.region===r; }):null); }
+function delEglise(id) { if(!confirm('Supprimer cette fiche ?')) return; eglises=eglises.filter(function(e){ return e.id!==id; }); localStorage.setItem('eeadci-eglises',JSON.stringify(eglises)); renderEglises(); showToast('Supprimé.'); }
+
+function resetEgliseForm() {
+  ['eg-nom','eg-code','eg-temple','eg-region','eg-district','eg-commune','eg-quartier','eg-adresse','eg-tel','eg-email','eg-annee','eg-pasteur-nom','eg-pasteur-tel','eg-pasteur-date','eg-adjoint-nom','eg-adjoint-tel','eg-adjoint-date','eg-patr1-nom','eg-patr1-contact','eg-patr2-nom','eg-patr2-contact','eg-baptises','eg-adherents','eg-culte','eg-hommes','eg-femmes','eg-jeunes','eg-enfants','eg-observations','eg-delegue','eg-signature','eg-date-valid','eg-visa','eg-gps'].forEach(function(id){ sv(id,''); });
+  var st = document.getElementById('eg-statut'); if(st) st.value='';
+  ['pasteur-statut','adjoint-statut','autorites','vie-admin'].forEach(function(n){ document.querySelectorAll('input[name="'+n+'"]').forEach(function(r){ r.checked=false; }); });
+  sv('eglise-edit-id','');
+}
+
+function saveEglise() {
+  var nom=v('eg-nom'); if(!nom){ showToast('Nom obligatoire','error'); return; }
+  var id=v('eglise-edit-id')||Date.now().toString();
+  var rec={id:id,nom:nom,code:v('eg-code'),temple:v('eg-temple'),region:v('eg-region'),district:v('eg-district'),commune:v('eg-commune'),quartier:v('eg-quartier'),adresse:v('eg-adresse'),tel:v('eg-tel'),email:v('eg-email'),annee:v('eg-annee'),statut:v('eg-statut'),pasteurNom:v('eg-pasteur-nom'),pasteurTel:v('eg-pasteur-tel'),pasteurDate:v('eg-pasteur-date'),pasteurStatut:getRadio('pasteur-statut'),adjointNom:v('eg-adjoint-nom'),adjointTel:v('eg-adjoint-tel'),adjointDate:v('eg-adjoint-date'),adjointStatut:getRadio('adjoint-statut'),patr1Nom:v('eg-patr1-nom'),patr1Contact:v('eg-patr1-contact'),patr2Nom:v('eg-patr2-nom'),patr2Contact:v('eg-patr2-contact'),baptises:v('eg-baptises'),adherents:v('eg-adherents'),culte:v('eg-culte'),hommes:v('eg-hommes'),femmes:v('eg-femmes'),jeunes:v('eg-jeunes'),enfants:v('eg-enfants'),infra:readInfra(),mobilier:readMobilier(),autorites:getRadio('autorites'),vieAdmin:getRadio('vie-admin'),observations:v('eg-observations'),delegue:v('eg-delegue'),signature:v('eg-signature'),dateValid:v('eg-date-valid'),visa:v('eg-visa'),gps:v('eg-gps'),createdAt:new Date().toLocaleDateString('fr-FR')};
+  var idx=eglises.findIndex(function(e){ return e.id===id; });
+  if(idx>=0) eglises[idx]=rec; else eglises.unshift(rec);
+  localStorage.setItem('eeadci-eglises',JSON.stringify(eglises));
+  showToast('Église enregistrée !'); sv('eglise-edit-id',''); showPage('eglise-list');
+}
+
+function editEglise(id) {
+  var e=eglises.find(function(x){ return x.id===id; }); if(!e) return;
+  sv('eglise-edit-id',e.id); sv('eg-nom',e.nom); sv('eg-code',e.code); sv('eg-temple',e.temple); sv('eg-region',e.region); sv('eg-district',e.district); sv('eg-commune',e.commune); sv('eg-quartier',e.quartier); sv('eg-adresse',e.adresse); sv('eg-tel',e.tel); sv('eg-email',e.email); sv('eg-annee',e.annee); document.getElementById('eg-statut').value=e.statut||'';
+  sv('eg-pasteur-nom',e.pasteurNom); sv('eg-pasteur-tel',e.pasteurTel); sv('eg-pasteur-date',e.pasteurDate); setRadio('pasteur-statut',e.pasteurStatut);
+  sv('eg-adjoint-nom',e.adjointNom); sv('eg-adjoint-tel',e.adjointTel); sv('eg-adjoint-date',e.adjointDate); setRadio('adjoint-statut',e.adjointStatut);
+  sv('eg-patr1-nom',e.patr1Nom); sv('eg-patr1-contact',e.patr1Contact); sv('eg-patr2-nom',e.patr2Nom); sv('eg-patr2-contact',e.patr2Contact);
+  sv('eg-baptises',e.baptises); sv('eg-adherents',e.adherents); sv('eg-culte',e.culte); sv('eg-hommes',e.hommes); sv('eg-femmes',e.femmes); sv('eg-jeunes',e.jeunes); sv('eg-enfants',e.enfants);
+  setRadio('autorites',e.autorites); setRadio('vie-admin',e.vieAdmin);
+  sv('eg-observations',e.observations); sv('eg-delegue',e.delegue); sv('eg-signature',e.signature); sv('eg-date-valid',e.dateValid); sv('eg-visa',e.visa); sv('eg-gps',e.gps||'');
+  buildInfraSections(); loadInfra(e.infra);
+  buildMobilierSections(); loadMobilier(e.mobilier);
+  document.getElementById('eglise-form-title').textContent='Modifier : '+e.nom;
+  showPage('eglise-form');
+}
+
+function viewEglise(id) {
+  var e=eglises.find(function(x){ return x.id===id; }); if(!e) return;
+  document.getElementById('modal-eglise-title').textContent=e.nom;
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr">'+detRow('Code Assemblée',e.code)+detRow('Temple',e.temple)+detRow('Région eccl.',e.region)+detRow('District',e.district)+detRow('Commune',e.commune)+detRow('Pasteur',e.pasteurNom+(e.pasteurTel?' — '+e.pasteurTel:''))+detRow('Statut',e.statut)+detRow('Membres baptisés',e.baptises)+detRow('Culte dominical',e.culte)+detRow('GPS',e.gps)+'</div>';
+
+  // Résumé infrastructures
+  if (e.infra) {
+    var infraRows = '';
+    var totalInfraVal = 0;
+    BUILDING_DEFS.forEach(function(b) {
+      var o = e.infra[b.id]; if (!o) return;
+      var hasData = (o.nom || o.existe==='Oui' || o.bati==='Oui' || (parseInt(o.valeur)>0));
+      if (!hasData) return;
+      var val = parseInt(o.valeur)||0; totalInfraVal += val;
+      infraRows += '<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:6px 10px">'+b.label+(o.nom?' — '+o.nom:'')+'</td><td style="padding:6px 10px"><span class="tag '+(o.etat==='Bon'?'tag-green':o.etat==='Moyen'?'tag-gold':o.etat==='Mauvais'?'tag-red':'tag-navy')+'" style="font-size:11px">'+(o.etat||'—')+'</span></td><td style="padding:6px 10px;text-align:right">'+(val?val.toLocaleString('fr-FR')+' F':'—')+'</td></tr>';
+    });
+    if (infraRows) {
+      html += '<div class="divider"></div><div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:8px">Infrastructures immobilières</div>'+
+        '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-100)"><th style="padding:6px 10px;text-align:left">Bâtiment</th><th style="padding:6px 10px;text-align:left;width:90px">État</th><th style="padding:6px 10px;text-align:right;width:130px">Valeur</th></tr></thead><tbody>'+infraRows+'</tbody></table>'+
+        (totalInfraVal?'<div style="text-align:right;font-size:12px;color:var(--gray-600);margin-top:4px">Total estimé : <strong>'+totalInfraVal.toLocaleString('fr-FR')+' FCFA</strong></div>':'');
+    }
+  }
+
+  // Résumé mobilier
+  if (e.mobilier) {
+    var mobRows = '';
+    var totalMobVal = 0, totalMobQty = 0;
+    MOB_CATS.forEach(function(cat) {
+      var rows = (e.mobilier[cat.id]||[]).filter(function(r){ return r.nombre>0; });
+      rows.forEach(function(r) {
+        totalMobVal += (r.valeur||0); totalMobQty += (r.nombre||0);
+        mobRows += '<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:6px 10px">'+cat.label+' — '+r.sub+'</td><td style="padding:6px 10px;text-align:center;font-weight:600">'+r.nombre+'</td><td style="padding:6px 10px;text-align:right">'+(r.valeur?r.valeur.toLocaleString('fr-FR')+' F':'—')+'</td></tr>';
+      });
+    });
+    if (mobRows) {
+      html += '<div class="divider"></div><div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:8px">Équipements mobiliers</div>'+
+        '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-100)"><th style="padding:6px 10px;text-align:left">Type</th><th style="padding:6px 10px;text-align:center;width:70px">Qté</th><th style="padding:6px 10px;text-align:right;width:130px">Valeur</th></tr></thead><tbody>'+mobRows+'</tbody></table>'+
+        (totalMobVal?'<div style="text-align:right;font-size:12px;color:var(--gray-600);margin-top:4px">Total estimé : <strong>'+totalMobVal.toLocaleString('fr-FR')+' FCFA</strong></div>':'');
+    }
+  }
+
+  if (e.observations) html += '<div class="divider"></div><div><div class="detail-label">Observations / Besoins en terrains</div><div style="font-size:13px;margin-top:4px">'+e.observations+'</div></div>';
+  html += '<div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="editEglise(\''+e.id+'\');closeModal(\'modal-eglise\')">✏️ Modifier</button></div>';
+  document.getElementById('modal-eglise-body').innerHTML = html;
+  document.getElementById('modal-eglise').classList.add('active');
+}
+
+
+
+// ── ÉGLISE : INFRASTRUCTURES IMMOBILIÈRES & ÉQUIPEMENTS MOBILIERS ────────────
+var BUILDING_DEFS = [
+  {id:'temple-principal', label:'Temple principal',        family:'temple'},
+  {id:'annexe-1',         label:'Temple annexe 1',         family:'temple'},
+  {id:'annexe-2',         label:'Temple annexe 2',         family:'temple'},
+  {id:'annexe-3',         label:'Temple annexe 3',         family:'temple'},
+  {id:'ecole',            label:'École',                   family:'ecole'},
+  {id:'sante',            label:'Infrastructure sanitaire', family:'sante'},
+  {id:'logement-1',       label:'Logement de pasteur 1',   family:'logement'},
+  {id:'logement-2',       label:'Logement de pasteur 2',   family:'logement'},
+  {id:'logement-3',       label:'Logement de pasteur 3',   family:'logement'}
+];
+
+function bId(bid,field){ return 'inf_'+bid+'_'+field; }
+
+function radioRow(name, opts, withAutre, autreId) {
+  var html = '<div class="checkbox-group">';
+  opts.forEach(function(o){ html += '<label class="checkbox-item"><input type="radio" name="'+name+'" value="'+o+'"> '+o+'</label>'; });
+  html += '</div>';
+  if (withAutre) html += '<input type="text" id="'+autreId+'" placeholder="Préciser…" style="margin-top:6px">';
+  return html;
+}
+function checkRow(prefix, opts) {
+  var html = '<div class="checkbox-group">';
+  opts.forEach(function(o){ html += '<label class="checkbox-item"><input type="checkbox" id="'+prefix+'_'+slug(o)+'" value="'+o+'"> '+o+'</label>'; });
+  html += '</div>';
+  return html;
+}
+function slug(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-'); }
+
+function renderBuildingCard(b) {
+  var id = b.id, fam = b.family;
+  var fields = '';
+
+  if (fam==='temple') {
+    fields += fieldGroup('Nom', '<input type="text" id="'+bId(id,'nom')+'">');
+    fields += fieldGroup('Temple bâti ?', radioRow(bId(id,'bati'),['Oui','Non']));
+  }
+  if (fam==='ecole' || fam==='sante') {
+    fields += fieldGroup('Existe-t-il ?', radioRow(bId(id,'existe'),['Oui','Non']));
+  }
+  if (fam==='temple' || fam==='ecole' || fam==='sante') {
+    fields += fieldGroup("Année de construction", '<input type="number" id="'+bId(id,'annee')+'" min="1900" max="2099">');
+    fields += fieldGroup('État général', radioRow(bId(id,'etat'),['Bon','Moyen','Mauvais']));
+  }
+  if (fam==='temple') {
+    fields += fieldGroup('Matériaux principaux', checkRow(bId(id,'mat'),['Béton','Brique','Bois','Tabernacle','Matériaux précaires']) + '<input type="text" id="'+bId(id,'mat_autre')+'" placeholder="Autre (préciser)" style="margin-top:6px">');
+    fields += fieldGroup("Capacité d'accueil (places)", '<input type="number" id="'+bId(id,'capacite')+'" min="0">');
+  }
+  if (fam==='ecole') {
+    fields += fieldGroup('Matériaux principaux', checkRow(bId(id,'mat'),['Béton','Brique','Bois','Matériaux précaires']) + '<input type="text" id="'+bId(id,'mat_autre')+'" placeholder="Autre (préciser)" style="margin-top:6px">');
+  }
+  if (fam==='sante') {
+    fields += fieldGroup('Matériaux principaux', checkRow(bId(id,'mat'),['Béton','Brique','Bois','Tabernacle','Matériaux précaires']) + '<input type="text" id="'+bId(id,'mat_autre')+'" placeholder="Autre (préciser)" style="margin-top:6px">');
+  }
+  if (fam==='logement') {
+    fields += fieldGroup('Type de construction', radioRow(bId(id,'type_log'),['Villa','Appartement']));
+    fields += fieldGroup('Nombre de pièces', '<input type="number" id="'+bId(id,'nb_pieces')+'" min="0">');
+    fields += fieldGroup("Année de construction", '<input type="number" id="'+bId(id,'annee')+'" min="1900" max="2099">');
+    fields += fieldGroup('État général', radioRow(bId(id,'etat'),['Bon','Moyen','Mauvais']));
+    fields += fieldGroup('Matériaux principaux', checkRow(bId(id,'mat'),['Béton','Brique','Bois','Matériaux précaires']) + '<input type="text" id="'+bId(id,'mat_autre')+'" placeholder="Autre (préciser)" style="margin-top:6px">');
+  }
+  if (fam==='temple' || fam==='logement') {
+    fields += fieldGroup('Existe-t-il un plan ?', radioRow(bId(id,'plan'),['Oui','Non']));
+  }
+  if (fam==='ecole' || fam==='sante') {
+    fields += fieldGroup('Existe-t-il un/des plan(s) ?', radioRow(bId(id,'plan'),['Oui','Non']));
+  }
+  fields += fieldGroup('Commodités disponibles', checkRow(bId(id,'com'),['Électricité','Eau courante','Climatisation','Sanitaires']));
+
+  if (fam==='temple') {
+    fields += fieldGroup('Nombre de cultes le dimanche', '<input type="number" id="'+bId(id,'cultes')+'" min="0">');
+  }
+  if (fam==='ecole') {
+    fields += fieldGroup('Niveau scolaire', checkRow(bId(id,'niveau'),['Maternelle','Primaire','Secondaire']));
+    fields += fieldGroup('Type de construction', radioRow(bId(id,'type_ecole'),['RDC','R+1','R+2','R+3']));
+    fields += fieldGroup('Nombre de classes', '<input type="number" id="'+bId(id,'nb_classes')+'" min="0">');
+    fields += fieldGroup("Capacité d'accueil — Maternelle", '<input type="number" id="'+bId(id,'cap_maternelle')+'" min="0">');
+    fields += fieldGroup("Capacité d'accueil — Primaire", '<input type="number" id="'+bId(id,'cap_primaire')+'" min="0">');
+    fields += fieldGroup("Capacité d'accueil — Secondaire", '<input type="number" id="'+bId(id,'cap_secondaire')+'" min="0">');
+    fields += fieldGroup('Bureau(x) de directeur', radioRow(bId(id,'bureau_dir'),['Oui','Non']) + '<input type="number" id="'+bId(id,'nb_bureau_dir')+'" min="0" placeholder="Nombre" style="margin-top:6px;max-width:120px">');
+  }
+  if (fam==='sante') {
+    fields += fieldGroup("Type d'infrastructure", radioRow(bId(id,'type_sante'),['Dispensaire','Clinique','Autre']));
+    fields += fieldGroup('Type de construction', radioRow(bId(id,'type_construction'),['RDC','R+1','R+2','R+3']));
+    fields += fieldGroup('Nombre de bureaux de consultation', '<input type="number" id="'+bId(id,'nb_bureaux_consult')+'" min="0">');
+    fields += fieldGroup('Nombre de lits', '<input type="number" id="'+bId(id,'nb_lits')+'" min="0">');
+    fields += fieldGroup('Nombre de pièces', '<input type="number" id="'+bId(id,'nb_pieces')+'" min="0">');
+  }
+
+  if (fam==='temple' || fam==='ecole' || fam==='sante' || fam==='logement') {
+    fields += fieldGroup('Statut du terrain', radioRow(bId(id,'statut_terrain'),['Propriété EEADCI','En location','Prêt','Autre'], true, bId(id,'statut_autre')));
+    fields += fieldGroup('Nom du propriétaire (sur les documents)', '<input type="text" id="'+bId(id,'proprio')+'">');
+    fields += fieldGroup('Superficie du terrain', '<input type="text" id="'+bId(id,'superficie')+'" placeholder="Ex: 500 m²">');
+    fields += fieldGroup('Le terrain dispose-t-il de :', checkRow(bId(id,'doc'),["ACD","Attestation villageoise",'Lettre d\'attribution','Acte de vente']) + '<input type="text" id="'+bId(id,'doc_autre')+'" placeholder="Autre (préciser)" style="margin-top:6px">');
+  }
+  if (fam==='temple') {
+    fields += fieldGroup('Bureau(x) de pasteurs', radioRow(bId(id,'bureau_pasteur'),['Oui','Non']) + '<input type="number" id="'+bId(id,'nb_bureau_pasteur')+'" min="0" placeholder="Nombre" style="margin-top:6px;max-width:120px">');
+    fields += fieldGroup('Ecodim', radioRow(bId(id,'ecodim'),['Oui','Non']) + '<input type="number" id="'+bId(id,'nb_ecodim')+'" min="0" placeholder="Nombre de classes" style="margin-top:6px;max-width:160px">');
+  }
+  fields += fieldGroup('Valeur estimative (FCFA)', '<input type="number" id="'+bId(id,'valeur')+'" min="0" placeholder="0">');
+
+  return '<div class="inv-section" id="card_'+id+'">'+
+    '<div class="inv-section-head" onclick="toggleCard(\''+id+'\')">'+
+      '<div class="inv-section-head-title">'+b.label+'</div>'+
+      '<span id="chev_'+id+'" style="color:var(--gray-400);font-size:12px">▶</span>'+
+    '</div>'+
+    '<div class="inv-section-body collapsed" id="body_'+id+'" style="padding:16px">'+
+      '<div class="form-grid">'+fields+'</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function fieldGroup(label, inner) {
+  return '<div class="form-group"><label>'+label+'</label>'+inner+'</div>';
+}
+
+function toggleCard(id) {
+  var body = document.getElementById('body_'+id);
+  var chev = document.getElementById('chev_'+id);
+  if (body.classList.contains('collapsed')) { body.classList.remove('collapsed'); chev.textContent='▼'; }
+  else { body.classList.add('collapsed'); chev.textContent='▶'; }
+}
+
+function buildInfraSections() {
+  var c = document.getElementById('eg-infra-container');
+  if (!c) return;
+  c.innerHTML = BUILDING_DEFS.map(renderBuildingCard).join('');
+}
+
+function readInfra() {
+  var data = {};
+  BUILDING_DEFS.forEach(function(b) {
+    var id = b.id, fam = b.family, o = {};
+    function gv(field){ var el=document.getElementById(bId(id,field)); return el?el.value:''; }
+    function gr(field){ return getRadio(bId(id,field)); }
+    function gc(prefix, opts){ return opts.filter(function(opt){ var el=document.getElementById(bId(id,prefix)+'_'+slug(opt)); return el && el.checked; }); }
+
+    if (fam==='temple') { o.nom=gv('nom'); o.bati=gr('bati'); }
+    if (fam==='ecole'||fam==='sante') { o.existe=gr('existe'); }
+    if (fam==='temple'||fam==='ecole'||fam==='sante') { o.annee=gv('annee'); o.etat=gr('etat'); }
+    if (fam==='temple') { o.mat=gc('mat',['Béton','Brique','Bois','Tabernacle','Matériaux précaires']); o.matAutre=gv('mat_autre'); o.capacite=gv('capacite'); }
+    if (fam==='ecole') { o.mat=gc('mat',['Béton','Brique','Bois','Matériaux précaires']); o.matAutre=gv('mat_autre'); }
+    if (fam==='sante') { o.mat=gc('mat',['Béton','Brique','Bois','Tabernacle','Matériaux précaires']); o.matAutre=gv('mat_autre'); }
+    if (fam==='logement') {
+      o.typeLog=gr('type_log'); o.nbPieces=gv('nb_pieces'); o.annee=gv('annee'); o.etat=gr('etat');
+      o.mat=gc('mat',['Béton','Brique','Bois','Matériaux précaires']); o.matAutre=gv('mat_autre');
+    }
+    if (fam==='temple'||fam==='ecole'||fam==='sante'||fam==='logement') { o.plan=gr('plan'); }
+    o.commodites = gc('com',['Électricité','Eau courante','Climatisation','Sanitaires']);
+    if (fam==='temple') { o.cultes=gv('cultes'); }
+    if (fam==='ecole') {
+      o.niveau=gc('niveau',['Maternelle','Primaire','Secondaire']); o.typeEcole=gr('type_ecole'); o.nbClasses=gv('nb_classes');
+      o.capMaternelle=gv('cap_maternelle'); o.capPrimaire=gv('cap_primaire'); o.capSecondaire=gv('cap_secondaire');
+      o.bureauDir=gr('bureau_dir'); o.nbBureauDir=gv('nb_bureau_dir');
+    }
+    if (fam==='sante') {
+      o.typeSante=gr('type_sante'); o.typeConstruction=gr('type_construction');
+      o.nbBureauxConsult=gv('nb_bureaux_consult'); o.nbLits=gv('nb_lits'); o.nbPieces=gv('nb_pieces');
+    }
+    if (fam==='temple'||fam==='ecole'||fam==='sante'||fam==='logement') {
+      o.statutTerrain=gr('statut_terrain'); o.statutAutre=gv('statut_autre');
+      o.proprio=gv('proprio'); o.superficie=gv('superficie');
+      o.doc=gc('doc',['ACD','Attestation villageoise','Lettre attribution','Acte de vente']); o.docAutre=gv('doc_autre');
+    }
+    if (fam==='temple') {
+      o.bureauPasteur=gr('bureau_pasteur'); o.nbBureauPasteur=gv('nb_bureau_pasteur');
+      o.ecodim=gr('ecodim'); o.nbEcodim=gv('nb_ecodim');
+    }
+    o.valeur = gv('valeur');
+    data[id] = o;
+  });
+  return data;
+}
+
+function loadInfra(data) {
+  if (!data) return;
+  BUILDING_DEFS.forEach(function(b) {
+    var id=b.id, fam=b.family, o=data[id]; if(!o) return;
+    function sv2(field,val){ var el=document.getElementById(bId(id,field)); if(el) el.value=val||''; }
+    function sr(field,val){ setRadio(bId(id,field), val); }
+    function sc(prefix, opts, vals){ opts.forEach(function(opt){ var el=document.getElementById(bId(id,prefix)+'_'+slug(opt)); if(el) el.checked=(vals||[]).indexOf(opt)>=0; }); }
+
+    if (fam==='temple'){ sv2('nom',o.nom); sr('bati',o.bati); }
+    if (fam==='ecole'||fam==='sante'){ sr('existe',o.existe); }
+    if (fam==='temple'||fam==='ecole'||fam==='sante'){ sv2('annee',o.annee); sr('etat',o.etat); }
+    if (fam==='temple'){ sc('mat',['Béton','Brique','Bois','Tabernacle','Matériaux précaires'],o.mat); sv2('mat_autre',o.matAutre); sv2('capacite',o.capacite); }
+    if (fam==='ecole'){ sc('mat',['Béton','Brique','Bois','Matériaux précaires'],o.mat); sv2('mat_autre',o.matAutre); }
+    if (fam==='sante'){ sc('mat',['Béton','Brique','Bois','Tabernacle','Matériaux précaires'],o.mat); sv2('mat_autre',o.matAutre); }
+    if (fam==='logement'){ sr('type_log',o.typeLog); sv2('nb_pieces',o.nbPieces); sv2('annee',o.annee); sr('etat',o.etat); sc('mat',['Béton','Brique','Bois','Matériaux précaires'],o.mat); sv2('mat_autre',o.matAutre); }
+    if (fam==='temple'||fam==='ecole'||fam==='sante'||fam==='logement'){ sr('plan',o.plan); }
+    sc('com',['Électricité','Eau courante','Climatisation','Sanitaires'],o.commodites);
+    if (fam==='temple'){ sv2('cultes',o.cultes); }
+    if (fam==='ecole'){
+      sc('niveau',['Maternelle','Primaire','Secondaire'],o.niveau); sr('type_ecole',o.typeEcole); sv2('nb_classes',o.nbClasses);
+      sv2('cap_maternelle',o.capMaternelle); sv2('cap_primaire',o.capPrimaire); sv2('cap_secondaire',o.capSecondaire);
+      sr('bureau_dir',o.bureauDir); sv2('nb_bureau_dir',o.nbBureauDir);
+    }
+    if (fam==='sante'){
+      sr('type_sante',o.typeSante); sr('type_construction',o.typeConstruction);
+      sv2('nb_bureaux_consult',o.nbBureauxConsult); sv2('nb_lits',o.nbLits); sv2('nb_pieces',o.nbPieces);
+    }
+    if (fam==='temple'||fam==='ecole'||fam==='sante'||fam==='logement'){
+      sr('statut_terrain',o.statutTerrain); sv2('statut_autre',o.statutAutre);
+      sv2('proprio',o.proprio); sv2('superficie',o.superficie);
+      sc('doc',['ACD','Attestation villageoise','Lettre attribution','Acte de vente'],o.doc); sv2('doc_autre',o.docAutre);
+    }
+    if (fam==='temple'){
+      sr('bureau_pasteur',o.bureauPasteur); sv2('nb_bureau_pasteur',o.nbBureauPasteur);
+      sr('ecodim',o.ecodim); sv2('nb_ecodim',o.nbEcodim);
+    }
+    sv2('valeur',o.valeur);
+  });
+}
+
+// ── MOBILIER ──────────────────────────────────────────────────────────────────
+var MOB_CATS = [
+  {id:'fauteuils',   label:'Fauteuils',                subs:['Type 1','Type 2','Type 3'],  marque:false},
+  {id:'chaises',     label:'Chaises',                  subs:['Type 1','Type 2'],           marque:false},
+  {id:'bancs',       label:'Bancs',                    subs:['Type 1','Type 2'],           marque:false},
+  {id:'tables',      label:'Tables',                   subs:['Type 1','Type 2'],           marque:false},
+  {id:'pupitres',    label:'Pupitres',                 subs:['Pupitres'],                  marque:false},
+  {id:'instruments', label:'Instruments de musique',   subs:['Tam-tam','Batterie','Guitares','Claviers (pianos)','Table de mixage','Autres'], marque:false},
+  {id:'vehicules',   label:'Véhicules',                subs:['Pousse-pousse','2 roues non motorisés','2 roues motorisés','Tricycles','Véhicules légers 4 roues','Cars','Autres véhicules'], marque:true}
+];
+
+function mId(catId, subIdx, field){ return 'mob_'+catId+'_'+subIdx+'_'+field; }
+
+function renderMobCard(cat) {
+  var rows = cat.subs.map(function(sub, idx) {
+    var marqueCell = cat.marque ? '<td><input type="text" class="inv-cell" id="'+mId(cat.id,idx,'marque')+'" placeholder="Marque…"></td>' : '';
+    return '<tr>'+
+      '<td style="font-weight:500;white-space:nowrap;padding:6px 8px">'+sub+'</td>'+
+      '<td><input type="text" class="inv-cell" id="'+mId(cat.id,idx,'desc')+'" placeholder="Description sommaire…"></td>'+
+      marqueCell+
+      '<td><input type="number" class="inv-cell" id="'+mId(cat.id,idx,'nombre')+'" min="0" style="width:70px;text-align:center"></td>'+
+      '<td><input type="number" class="inv-cell" id="'+mId(cat.id,idx,'annee')+'" min="1900" max="2099" style="width:90px"></td>'+
+      '<td><input type="number" class="inv-cell" id="'+mId(cat.id,idx,'valeur')+'" min="0" placeholder="0" style="text-align:right"></td>'+
+    '</tr>';
+  }).join('');
+  var marqueHead = cat.marque ? '<th style="width:120px">Marque</th>' : '';
+  return '<div class="inv-section" id="mobcard_'+cat.id+'">'+
+    '<div class="inv-section-head" onclick="toggleCard(\'mob-'+cat.id+'\')">'+
+      '<div class="inv-section-head-title">'+cat.label+'</div>'+
+      '<span id="chev_mob-'+cat.id+'" style="color:var(--gray-400);font-size:12px">▶</span>'+
+    '</div>'+
+    '<div class="inv-section-body collapsed" id="body_mob-'+cat.id+'">'+
+      '<div style="overflow-x:auto"><table class="inv-table">'+
+        '<thead><tr><th style="width:170px">Type</th><th>Description sommaire</th>'+marqueHead+'<th style="width:80px">Nombre</th><th style="width:100px">Année acq.</th><th style="width:130px;text-align:right">Valeur (FCFA)</th></tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table></div>'+
+    '</div>'+
+  '</div>';
+}
+
+function buildMobilierSections() {
+  var c = document.getElementById('eg-mobilier-container');
+  if (!c) return;
+  c.innerHTML = MOB_CATS.map(renderMobCard).join('');
+}
+
+function readMobilier() {
+  var data = {};
+  MOB_CATS.forEach(function(cat) {
+    data[cat.id] = cat.subs.map(function(sub, idx) {
+      function gv(f){ var el=document.getElementById(mId(cat.id,idx,f)); return el?el.value:''; }
+      return {sub:sub, desc:gv('desc'), marque:cat.marque?gv('marque'):'', nombre:parseInt(gv('nombre'))||0, annee:gv('annee'), valeur:parseInt(gv('valeur'))||0};
+    });
+  });
+  return data;
+}
+
+function loadMobilier(data) {
+  if (!data) return;
+  MOB_CATS.forEach(function(cat) {
+    var rows = data[cat.id]; if(!rows) return;
+    rows.forEach(function(r, idx) {
+      function sv2(f,val){ var el=document.getElementById(mId(cat.id,idx,f)); if(el) el.value=val||''; }
+      sv2('desc',r.desc); if(cat.marque) sv2('marque',r.marque); sv2('nombre',r.nombre); sv2('annee',r.annee); sv2('valeur',r.valeur);
+    });
+  });
+}
+
+function initEgliseFormSections() {
+  buildInfraSections();
+  buildMobilierSections();
+}
+
+// ── PARCELLES ─────────────────────────────────────────────────────────────────
+function renderParcelles(data) {
+  var list=data||parcelles, tbody=document.getElementById('parcelle-tbody');
+  if (!list.length) { tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><h3>Aucune parcelle enregistrée</h3></div></td></tr>'; return; }
+  function aTag(v){ return v==='Oui'?'<span class="tag tag-green">✓ Oui</span>':v==='Non'?'<span class="tag tag-red">✗ Non</span>':'—'; }
+  tbody.innerHTML=list.map(function(p){ return '<tr onclick="viewParcelle(\''+p.id+'\')"><td><strong>'+p.eglise+'</strong></td><td>'+(p.regionEEADCI||'—')+'</td><td>'+(p.commune||'—')+'</td><td>'+(p.lot||'—')+'</td><td>'+(p.superficie||'—')+'</td><td>'+(p.statutJuridique?'<span class="tag tag-navy">'+p.statutJuridique+'</span>':'—')+'</td><td>'+aTag(p.acd)+'</td><td>'+(p.occupation?'<span class="tag tag-gold">'+p.occupation+'</span>':'—')+'</td><td onclick="event.stopPropagation()"><button class="btn btn-sm btn-secondary" style="margin-right:4px" onclick="editParcelle(\''+p.id+'\')">✏️</button><button class="btn btn-sm btn-danger" onclick="delParcelle(\''+p.id+'\')">🗑</button></td></tr>'; }).join('');
+}
+function filterParcelles(q) { renderParcelles(q?parcelles.filter(function(p){ return JSON.stringify(p).toLowerCase().includes(q.toLowerCase()); }):null); }
+function filterParcellesStatut(s) { renderParcelles(s?parcelles.filter(function(p){ return p.statutJuridique===s; }):null); }
+function delParcelle(id) { if(!confirm('Supprimer ?')) return; parcelles=parcelles.filter(function(p){ return p.id!==id; }); localStorage.setItem('eeadci-parcelles',JSON.stringify(parcelles)); renderParcelles(); showToast('Supprimé.'); }
+
+function saveParcelle() {
+  var eglise=v('pa-eglise'); if(!eglise){ showToast("Nom de l'église obligatoire",'error'); return; }
+  var id=v('parcelle-edit-id')||Date.now().toString();
+  var rec={id:id,eglise:eglise,code:v('pa-code'),regionEEADCI:v('pa-region-eeadci'),delegue1Nom:v('pa-delegue1-nom'),delegue1Contact:v('pa-delegue1-contact'),delegue2Nom:v('pa-delegue2-nom'),delegue2Contact:v('pa-delegue2-contact'),regionAdmin:v('pa-region-admin'),pasteurNom:v('pa-pasteur-nom'),pasteurContact:v('pa-pasteur-contact'),dateInventaire:v('pa-date-inventaire'),inventeurs:v('pa-inventeurs'),commune:v('pa-commune'),quartier:v('pa-quartier'),dateRecens:v('pa-date-recens'),agent:v('pa-agent'),lot:v('pa-lot'),titreNum:v('pa-titre-num'),superficie:v('pa-superficie'),gps:v('pa-gps'),natureTerrain:getRadio('nature-terrain'),natureAutre:v('pa-nature-autre'),nord:v('pa-nord'),sud:v('pa-sud'),est:v('pa-est'),ouest:v('pa-ouest'),statutJuridique:getRadio('statut-juridique'),acd:getRadio('acd'),acdRef:v('pa-acd-ref'),attestation:getRadio('attestation'),dateAcq:v('pa-date-acq'),financement:getRadio('financement'),proprioNom:v('pa-proprio-nom'),proprioCni:v('pa-proprio-cni'),proprioAdresse:v('pa-proprio-adresse'),proprioDateAcq:v('pa-proprio-date-acq'),modeAcq:getRadio('mode-acq'),occupation:getRadio('occupation'),occupationAutre:v('pa-occupation-autre'),duree:v('pa-duree'),occupants:getRadio('occupants'),motif:v('pa-motif'),observations:v('pa-observations'),recommandations:getChecks('reco-checkboxes'),recoAutre:v('pa-reco-autre'),sigAgent:v('pa-sig-agent'),sigChef:v('pa-sig-chef'),sigDate:v('pa-sig-date'),createdAt:new Date().toLocaleDateString('fr-FR')};
+  var idx=parcelles.findIndex(function(p){ return p.id===id; });
+  if(idx>=0) parcelles[idx]=rec; else parcelles.unshift(rec);
+  localStorage.setItem('eeadci-parcelles',JSON.stringify(parcelles));
+  showToast('Parcelle enregistrée !'); sv('parcelle-edit-id',''); showPage('parcelle-list');
+}
+
+function editParcelle(id) {
+  var p=parcelles.find(function(x){ return x.id===id; }); if(!p) return;
+  var fields=['eglise','code','region-eeadci','delegue1-nom','delegue1-contact','delegue2-nom','delegue2-contact','region-admin','pasteur-nom','pasteur-contact','date-inventaire','inventeurs','commune','quartier','date-recens','agent','lot','titre-num','superficie','gps','nature-autre','nord','sud','est','ouest','acd-ref','date-acq','proprio-nom','proprio-cni','proprio-adresse','proprio-date-acq','occupation-autre','duree','motif','observations','reco-autre','sig-agent','sig-chef','sig-date'];
+  var keys=['eglise','code','regionEEADCI','delegue1Nom','delegue1Contact','delegue2Nom','delegue2Contact','regionAdmin','pasteurNom','pasteurContact','dateInventaire','inventeurs','commune','quartier','dateRecens','agent','lot','titreNum','superficie','gps','natureAutre','nord','sud','est','ouest','acdRef','dateAcq','proprioNom','proprioCni','proprioAdresse','proprioDateAcq','occupationAutre','duree','motif','observations','recoAutre','sigAgent','sigChef','sigDate'];
+  fields.forEach(function(f,i){ sv('pa-'+f,p[keys[i]]||''); });
+  sv('parcelle-edit-id',p.id);
+  setRadio('nature-terrain',p.natureTerrain); setRadio('statut-juridique',p.statutJuridique); setRadio('acd',p.acd); setRadio('attestation',p.attestation); setRadio('financement',p.financement); setRadio('mode-acq',p.modeAcq); setRadio('occupation',p.occupation); setRadio('occupants',p.occupants);
+  setChecks('reco-checkboxes',p.recommandations||[]);
+  document.getElementById('parcelle-form-title').textContent='Modifier : '+p.eglise;
+  showPage('parcelle-form');
+}
+
+function viewParcelle(id) {
+  var p=parcelles.find(function(x){ return x.id===id; }); if(!p) return;
+  document.getElementById('modal-parcelle-title').textContent='Parcelle — '+p.eglise;
+  document.getElementById('modal-parcelle-body').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr">'+detRow('Église',p.eglise)+detRow('Région EEADCI',p.regionEEADCI)+detRow('Commune',p.commune)+detRow('N° lot',p.lot)+detRow('Superficie',p.superficie)+detRow('Statut juridique',p.statutJuridique)+detRow('ACD / Titre',p.acd)+detRow('Attestation',p.attestation)+detRow('Occupation',p.occupation)+detRow('Durée inoccupation',p.duree)+detRow('Occupants informels',p.occupants)+detRow('GPS',p.gps)+'</div>'+(p.observations?'<div class="divider"></div><div><div class="detail-label">Observations</div><div style="font-size:13px;margin-top:4px">'+p.observations+'</div></div>':'')+'<div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="editParcelle(\''+p.id+'\');closeModal(\'modal-parcelle\')">✏️ Modifier</button></div>';
+  document.getElementById('modal-parcelle').classList.add('active');
+}
+
+// ── INVENTAIRE ────────────────────────────────────────────────────────────────
+var INV_CATS = [
+  {id:'mobilier-culte',  label:'I. Mobilier de culte',            items:['Chaises plastique','Bancs bois','Tables pliantes','Chaises présidence','Pupitre pasteur','Table de communion','Lutrin','Tentures / rideaux','Tapis allée centrale']},
+  {id:'mobilier-bureau', label:'II. Mobilier de bureau',          items:['Bureau directeur','Chaises bureau','Armoire classement','Étagères','Table de réunion','Coffre-fort']},
+  {id:'instruments',     label:'III. Instruments de musique',     items:['Piano / clavier électronique','Guitare électrique','Guitare basse','Batterie acoustique','Batterie électronique','Orgue','Trompette','Trombone','Saxophone','Djembe / tam-tam']},
+  {id:'sono',            label:'IV. Sonorisation & audiovisuel',  items:['Table de mixage','Amplificateur','Enceintes / baffles','Microphones filaires','Microphones sans fil','Vidéoprojecteur','Écran de projection','Téléviseur','Caméra']},
+  {id:'electrique',      label:'V. Équipements électriques',      items:['Groupe électrogène','Climatiseur','Ventilateurs','Panneaux solaires','Batterie solaire','Onduleur / UPS','Éclairage LED (lot)']},
+  {id:'vehicules',       label:'VI. Véhicules & engins',          items:['Voiture berline','Minibus / van','Moto','Camion','Tricycle']},
+  {id:'informatique',    label:'VII. Informatique & bureautique', items:['Ordinateur de bureau','Ordinateur portable','Imprimante','Scanner','Photocopieuse','Tablette']},
+  {id:'cuisine',         label:'VIII. Cuisine & réception',       items:['Réfrigérateur','Congélateur','Cuisinière à gaz','Service de vaisselle (lot)','Marmites (lot)','Tables réception','Chaises réception']},
+  {id:'autres',          label:'IX. Autres biens',                items:['Tentes / chapiteau','Chaises monobloc (lot)','Extincteur','Trousse de secours']}
+];
+var ETATS   = ['Bon état','Neuf','État moyen','À réparer','Hors service'];
+var PROPRIO = ['EEADCI','Don fidèle','Prêt','Location','Inconnu'];
+
+function buildInvSections() {
+  var container = document.getElementById('inv-sections-container');
+  if (!container) return;
+  container.innerHTML = '';
+  INV_CATS.forEach(function(cat) {
+    var sec = document.createElement('div');
+    sec.className = 'inv-section form-section';
+    sec.id = 'inv-sec-'+cat.id;
+    var thead = '<thead><tr class="inv-table-head"><th style="min-width:180px">Désignation</th><th style="width:65px;text-align:center">Qté</th><th style="width:125px">État</th><th style="width:115px">Propriété</th><th style="width:135px;text-align:right">Valeur (FCFA)</th><th>Observations</th><th style="width:32px"></th></tr></thead>';
+    sec.innerHTML =
+      '<div class="inv-section-head" onclick="toggleInvSec(\''+cat.id+'\')">'+
+        '<div class="inv-section-head-title">'+cat.label+'</div>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<span id="inv-count-'+cat.id+'" class="tag tag-navy">0</span>'+
+          '<button type="button" class="btn btn-sm btn-secondary" style="padding:3px 8px" onclick="event.stopPropagation();addInvRow(\''+cat.id+'\')">+ Ajouter</button>'+
+          '<span id="inv-chevron-'+cat.id+'" style="color:var(--gray-400);font-size:12px">▼</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="inv-section-body" id="inv-body-wrap-'+cat.id+'">'+
+        '<div style="overflow-x:auto">'+
+          '<table class="inv-table"><'+thead+'<tbody id="inv-tbody-'+cat.id+'"></tbody></table>'+
+        '</div>'+
+      '</div>';
+    container.appendChild(sec);
+    // Add default rows
+    cat.items.forEach(function(item) { addInvRowData(cat.id, item, 0, 'Bon état', 'EEADCI', '', ''); });
+  });
+}
+
+function toggleInvSec(catId) {
+  var body = document.getElementById('inv-body-wrap-'+catId);
+  var chev = document.getElementById('inv-chevron-'+catId);
+  if (body.classList.contains('collapsed')) {
+    body.classList.remove('collapsed'); chev.textContent = '▼';
+  } else {
+    body.classList.add('collapsed'); chev.textContent = '▶';
+  }
+}
+
+function addInvRow(catId) { addInvRowData(catId,'',1,'Bon état','EEADCI','',''); updateInvCount(catId); }
+
+function addInvRowData(catId, label, qty, etat, proprio, valeur, obs) {
+  var tbody = document.getElementById('inv-tbody-'+catId);
+  if (!tbody) return;
+  var etatOpts  = ETATS.map(function(e){ return '<option'+(e===etat?' selected':'')+'>'+e+'</option>'; }).join('');
+  var propOpts  = PROPRIO.map(function(p){ return '<option'+(p===proprio?' selected':'')+'>'+p+'</option>'; }).join('');
+  var tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td><input type="text" class="inv-cell" value="'+esc(label)+'" placeholder="Désignation…"></td>'+
+    '<td><input type="number" class="inv-cell" value="'+(qty||0)+'" min="0" style="width:58px;text-align:center"></td>'+
+    '<td><select class="inv-cell">'+etatOpts+'</select></td>'+
+    '<td><select class="inv-cell">'+propOpts+'</select></td>'+
+    '<td><input type="number" class="inv-cell" value="'+esc(valeur||'')+'" min="0" placeholder="0" style="text-align:right"></td>'+
+    '<td><input type="text" class="inv-cell" value="'+esc(obs||'')+'" placeholder="Remarque…"></td>'+
+    '<td><button type="button" class="inv-del-btn" onclick="this.closest(\'tr\').remove();updateInvCount(\''+catId+'\')">×</button></td>';
+  tbody.appendChild(tr);
+  updateInvCount(catId);
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function updateInvCount(catId) {
+  var tbody = document.getElementById('inv-tbody-'+catId);
+  var cnt = document.getElementById('inv-count-'+catId);
+  if (!tbody || !cnt) return;
+  var total = 0;
+  tbody.querySelectorAll('tr').forEach(function(tr){
+    var inp = tr.querySelectorAll('input,select');
+    total += (parseInt(inp[1] && inp[1].value)||0);
+  });
+  cnt.textContent = total;
+}
+
+function readInvTable(catId) {
+  var tbody = document.getElementById('inv-tbody-'+catId);
+  if (!tbody) return [];
+  var rows = [];
+  tbody.querySelectorAll('tr').forEach(function(tr) {
+    var inp = tr.querySelectorAll('input,select');
+    var label = (inp[0]?inp[0].value:'').trim();
+    if (!label) return;
+    rows.push({label:label, qty:parseInt(inp[1]?inp[1].value:0)||0, etat:inp[2]?inp[2].value:'', proprio:inp[3]?inp[3].value:'', valeur:parseInt(inp[4]?inp[4].value:0)||0, obs:(inp[5]?inp[5].value:'').trim()});
+  });
+  return rows;
+}
+
+function loadInvTable(catId, rows) {
+  var tbody = document.getElementById('inv-tbody-'+catId);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  (rows||[]).forEach(function(r){ addInvRowData(catId,r.label,r.qty,r.etat,r.proprio,r.valeur,r.obs); });
+  updateInvCount(catId);
+}
+
+function fillInvEgliseSelect() {
+  var sel = document.getElementById('inv-eglise');
+  var sel2= document.getElementById('inv-filter-eglise');
+  [sel,sel2].forEach(function(s){
+    if(!s) return;
+    var cur=s.value;
+    while(s.options.length>1) s.remove(1);
+    eglises.forEach(function(e){ var o=document.createElement('option'); o.value=e.nom; o.textContent=e.nom; s.appendChild(o); });
+    if(cur) s.value=cur;
+  });
+}
+
+function initInvForm() {
+  fillInvEgliseSelect();
+  var editId = document.getElementById('inv-id').value;
+  if (!editId) {
+    document.getElementById('inv-form-title').textContent = 'Nouvel inventaire mobilier';
+    ['inv-eglise','inv-region','inv-date','inv-agent','inv-obs','inv-sig-resp','inv-sig-pasteur','inv-sig-date'].forEach(function(id){ sv(id,''); });
+    buildInvSections();
+  }
+}
+
+function saveInv() {
+  var eglise=v('inv-eglise'); if(!eglise){ showToast('Sélectionner une assemblée','error'); return; }
+  var id=v('inv-id')||Date.now().toString();
+  var rec={id:id,eglise:eglise,region:v('inv-region'),date:v('inv-date'),agent:v('inv-agent'),observations:v('inv-obs'),sigResp:v('inv-sig-resp'),sigPasteur:v('inv-sig-pasteur'),sigDate:v('inv-sig-date'),createdAt:new Date().toLocaleDateString('fr-FR')};
+  INV_CATS.forEach(function(cat){ rec[cat.id]=readInvTable(cat.id); });
+  var idx=inventaires.findIndex(function(i){ return i.id===id; });
+  if(idx>=0) inventaires[idx]=rec; else inventaires.unshift(rec);
+  localStorage.setItem('eeadci-inventaires',JSON.stringify(inventaires));
+  showToast('Inventaire enregistré !'); sv('inv-id',''); showPage('inventaire-list');
+}
+
+function renderInvList(data) {
+  fillInvEgliseSelect();
+  var list=data||inventaires;
+  var tbody=document.getElementById('inv-tbody');
+  if (!tbody) { console.warn('inv-tbody not found'); return; }
+  if(!list.length){ tbody.innerHTML='<tr><td colspan="9" style="padding:50px 20px;text-align:center;color:var(--gray-400)"><div style="font-size:32px;margin-bottom:12px">📋</div><div style="font-size:15px;font-weight:500;color:var(--gray-600);margin-bottom:6px">Aucun inventaire enregistré</div><div style="font-size:13px">Cliquez sur "Nouvel inventaire" pour commencer</div></td></tr>'; return; }
+  var tot=function(inv,catId){ return (inv[catId]||[]).reduce(function(s,r){ return s+(r.qty||0); },0); };
+  tbody.innerHTML=list.map(function(inv){ return '<tr onclick="viewInv(\''+inv.id+'\')"><td><strong>'+inv.eglise+'</strong></td><td>'+(inv.date?new Date(inv.date).toLocaleDateString('fr-FR'):inv.createdAt||'—')+'</td><td>'+(inv.agent||'—')+'</td><td><span class="tag tag-navy">'+tot(inv,'mobilier-culte')+'</span></td><td><span class="tag tag-gold">'+tot(inv,'instruments')+'</span></td><td><span class="tag tag-navy">'+tot(inv,'sono')+'</span></td><td><span class="tag tag-green">'+tot(inv,'electrique')+'</span></td><td><span class="tag tag-navy">'+tot(inv,'vehicules')+'</span></td><td onclick="event.stopPropagation()"><button class="btn btn-sm btn-secondary" style="margin-right:4px" onclick="editInv(\''+inv.id+'\')">✏️</button><button class="btn btn-sm btn-danger" onclick="delInv(\''+inv.id+'\')">🗑</button></td></tr>'; }).join('');
+}
+function filterInv(q){ renderInvList(q?inventaires.filter(function(i){ return JSON.stringify(i).toLowerCase().includes(q.toLowerCase()); }):null); }
+function filterInvEglise(e){ renderInvList(e?inventaires.filter(function(i){ return i.eglise===e; }):null); }
+function delInv(id){ if(!confirm('Supprimer ?')) return; inventaires=inventaires.filter(function(i){ return i.id!==id; }); localStorage.setItem('eeadci-inventaires',JSON.stringify(inventaires)); renderInvList(); showToast('Supprimé.'); }
+
+function editInv(id) {
+  var inv=inventaires.find(function(x){ return x.id===id; }); if(!inv) return;
+  sv('inv-id',inv.id);
+  // Reset sections first
+  var container=document.getElementById('inv-sections-container');
+  if(container) container.innerHTML='';
+  buildInvSections();
+  fillInvEgliseSelect();
+  sv('inv-eglise',inv.eglise); sv('inv-region',inv.region||''); sv('inv-date',inv.date||''); sv('inv-agent',inv.agent||''); sv('inv-obs',inv.observations||''); sv('inv-sig-resp',inv.sigResp||''); sv('inv-sig-pasteur',inv.sigPasteur||''); sv('inv-sig-date',inv.sigDate||'');
+  INV_CATS.forEach(function(cat){ loadInvTable(cat.id, inv[cat.id]); });
+  document.getElementById('inv-form-title').textContent='Modifier : '+inv.eglise;
+  showPage('inventaire-form');
+}
+
+function viewInv(id) {
+  var inv=inventaires.find(function(x){ return x.id===id; }); if(!inv) return;
+  document.getElementById('modal-inv-title').textContent='Inventaire — '+inv.eglise;
+  var etatColor={'Bon état':'tag-green','Neuf':'tag-green','État moyen':'tag-gold','À réparer':'tag-gold','Hors service':'tag-red'};
+  var html='<div style="display:grid;grid-template-columns:1fr 1fr;margin-bottom:16px">'+detRow('Assemblée',inv.eglise)+detRow('Date',inv.date?new Date(inv.date).toLocaleDateString('fr-FR'):'—')+detRow('Agent',inv.agent)+detRow('Validé par',inv.sigPasteur)+'</div>';
+  var grand=0;
+  INV_CATS.forEach(function(cat){
+    var rows=(inv[cat.id]||[]).filter(function(r){ return r.qty>0; }); if(!rows.length) return;
+    var sub=rows.reduce(function(s,r){ return s+(r.valeur||0); },0); grand+=sub;
+    html+='<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:600;color:var(--navy);border-bottom:2px solid var(--gold-pale);padding-bottom:5px;margin-bottom:7px">'+cat.label+'</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--gray-100)"><th style="padding:5px 8px;text-align:left">Désignation</th><th style="padding:5px 8px;text-align:center;width:45px">Qté</th><th style="padding:5px 8px;width:100px">État</th><th style="padding:5px 8px;width:90px">Propriété</th><th style="padding:5px 8px;text-align:right;width:120px">Valeur</th></tr></thead><tbody>'+rows.map(function(r){ return '<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:5px 8px">'+r.label+'</td><td style="padding:5px 8px;text-align:center;font-weight:600">'+r.qty+'</td><td style="padding:5px 8px"><span class="tag '+(etatColor[r.etat]||'tag-navy')+'" style="font-size:10px">'+r.etat+'</span></td><td style="padding:5px 8px;color:var(--gray-600);font-size:11px">'+r.proprio+'</td><td style="padding:5px 8px;text-align:right">'+(r.valeur?r.valeur.toLocaleString('fr-FR')+' F':'—')+'</td></tr>'; }).join('')+'</tbody></table></div>'+(sub?'<div style="text-align:right;font-size:11px;color:var(--gray-600);margin-top:3px">Sous-total : <strong>'+sub.toLocaleString('fr-FR')+' FCFA</strong></div>':'')+'</div>';
+  });
+  if(grand) html+='<div style="background:var(--gold-pale);border:1px solid rgba(201,146,42,.3);border-radius:8px;padding:10px 14px;text-align:right;margin:10px 0;font-size:13px;color:var(--navy)">Total estimé : <strong style="font-size:17px">'+grand.toLocaleString('fr-FR')+' FCFA</strong></div>';
+  if(inv.observations) html+='<div class="divider"></div><div><div class="detail-label">Observations</div><div style="font-size:13px;margin-top:4px">'+inv.observations+'</div></div>';
+  html+='<div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="editInv(\''+inv.id+'\');closeModal(\'modal-inv\')">✏️ Modifier</button></div>';
+  document.getElementById('modal-inv-body').innerHTML=html;
+  document.getElementById('modal-inv').classList.add('active');
+}
+
+// ── CARTE ────────────────────────────────────────────────────────────────────
+var map=null, mapMarkers=[];
+function initMap(){
+  if(map) return;
+  map=L.map('patrimoine-map',{zoomControl:true,scrollWheelZoom:true}).setView([7.54,-5.55],7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
+}
+function parseGPS(s){
+  if(!s) return null;
+  s=s.replace(/[°'"NSOEWnsoewtbT]/g,'').trim();
+  var p=s.split(/[\s,;\/]+/).filter(Boolean);
+  if(p.length>=2){ var la=parseFloat(p[0]),lo=parseFloat(p[1]); if(!isNaN(la)&&!isNaN(lo)&&la>=-90&&la<=90&&lo>=-180&&lo<=180) return[la,lo]; }
+  return null;
+}
+var iconE=null,iconP=null;
+function getIcons(){
+  if(!iconE) iconE=L.divIcon({className:'',html:'<div style="width:14px;height:14px;border-radius:50%;background:#3A4F82;border:3px solid #fff;box-shadow:0 2px 6px rgba(26,39,68,.4)"></div>',iconSize:[14,14],iconAnchor:[7,7]});
+  if(!iconP) iconP=L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#C9922A;border:2px solid #fff;transform:rotate(45deg);box-shadow:0 2px 6px rgba(201,146,42,.5)"></div>',iconSize:[12,12],iconAnchor:[6,6]});
+}
+function refreshMap(){
+  if(!map){initMap();} getIcons();
+  mapMarkers.forEach(function(m){ map.removeLayer(m); }); mapMarkers=[];
+  var bounds=[],has=false;
+  eglises.forEach(function(e){
+    var c=parseGPS(e.gps); if(!c) return; has=true; bounds.push(c);
+    var m=L.marker(c,{icon:iconE}).bindPopup('<div style="font-family:DM Sans,sans-serif;min-width:160px"><div style="font-weight:600;font-size:13px;color:#1A2744;margin-bottom:3px">'+e.nom+'</div><div style="font-size:11px;color:#6B6760">'+(e.region||'')+(e.commune?' · '+e.commune:'')+'</div></div>',{maxWidth:220}).addTo(map);
+    mapMarkers.push(m);
+  });
+  parcelles.forEach(function(p){
+    var c=parseGPS(p.gps); if(!c) return; has=true; bounds.push(c);
+    var tag=p.acd==='Oui'?'<span style="padding:2px 7px;border-radius:10px;background:#E8F5EE;color:#2D6A4F;font-size:10px">✓ Titre</span>':'<span style="padding:2px 7px;border-radius:10px;background:#FDEEEC;color:#B5352A;font-size:10px">✗ Sans titre</span>';
+    var m=L.marker(c,{icon:iconP}).bindPopup('<div style="font-family:DM Sans,sans-serif;min-width:160px"><div style="font-weight:600;font-size:13px;color:#1A2744;margin-bottom:3px">'+p.eglise+'</div><div style="font-size:11px;color:#6B6760">'+(p.commune||'')+'</div><div style="margin-top:5px">'+tag+'</div></div>',{maxWidth:220}).addTo(map);
+    mapMarkers.push(m);
+  });
+  document.getElementById('map-hint').style.display=has?'none':'block';
+  if(bounds.length>0) map.fitBounds(bounds.map(function(c){ return[c[0],c[1]]; }),{padding:[40,40],maxZoom:14});
+  setTimeout(function(){ map.invalidateSize(); },100);
+}
+function resetMapView(){ if(map) map.setView([7.54,-5.55],7); }
+
+// ── SEED ─────────────────────────────────────────────────────────────────────
+(function seed(){
+  if(!localStorage.getItem('eeadci-eglises')){
+    var eg=[
+      {id:'e1',nom:'Assemblée de Dieu Bethel',temple:'Temple Bethel',region:'Région Abidjan Sud',district:'District Marcory-Koumassi',commune:'Marcory',quartier:'Zone 4',adresse:'Rue des Jardins, Zone 4',tel:'0708112233',email:'bethel.marcory@eeadci.ci',annee:'1992',statut:'Église autonome',pasteurNom:'Pasteur Kouassi Jean-Baptiste',pasteurTel:'0707445566',pasteurDate:'2015-03-01',pasteurStatut:'ordonné',adjointNom:'Pasteur Yao Emmanuel',adjointTel:'0505334455',adjointDate:'2019-07-15',adjointStatut:'ordonné',patr1Nom:'Frère Konan Germain',patr1Contact:'0101223344',patr2Nom:'Sœur Ahou Reine',patr2Contact:'0102334455',baptises:'420',adherents:'85',culte:'510',hommes:'190',femmes:'215',jeunes:'80',enfants:'45',lieuOccupation:"Propriété de l'Église",capacite:'600',superficie:'1200 m²',infrastructures:['Temple','Bureau pastoral','Logement pastoral'],infraAutre:'Salle de réunion',titreFoncier:'Oui',titreNum:'TF-ABJ-00412',autorites:'Oui',vieAdmin:'Oui',observations:'Église bien établie. Titre foncier en règle.',delegue:'Pasteur Bah Mamadou',dateValid:'2024-11-10',visa:'Bureau Région Abidjan Sud',createdAt:'10/11/2024',gps:'5.3083, -4.0028'},
+      {id:'e2',nom:'Assemblée de Dieu Maranatha',temple:'Temple Maranatha',region:'Région Abidjan Nord',district:'District Abobo-Anyama',commune:'Abobo',quartier:'Abobo Baoulé',adresse:'Avenue Principale, Abobo Baoulé',tel:'0102445566',email:'',annee:'2001',statut:'Église autonome',pasteurNom:'Pasteur Touré Drissa',pasteurTel:'0708556677',pasteurDate:'2010-01-20',pasteurStatut:'ordonné',adjointNom:'',adjointTel:'',adjointDate:'',adjointStatut:'',patr1Nom:'Frère Coulibaly Sékou',patr1Contact:'0103445566',patr2Nom:'',patr2Contact:'',baptises:'285',adherents:'60',culte:'340',hommes:'130',femmes:'155',jeunes:'55',enfants:'30',lieuOccupation:'Location',capacite:'400',superficie:'800 m²',infrastructures:['Temple','Bureau pastoral'],infraAutre:'',titreFoncier:'Non',titreNum:'',autorites:'Oui',vieAdmin:'Non',observations:'Temple en location. Recherche terrain.',delegue:'Pasteur Diomandé Lassina',dateValid:'2024-10-05',visa:'Bureau Région Abidjan Nord',createdAt:'05/10/2024',gps:'5.4175, -4.0138'},
+      {id:'e3',nom:'Assemblée de Dieu Siloé',temple:'Temple Siloé',region:'Région Centre',district:'District Yamoussoukro',commune:'Yamoussoukro',quartier:'Quartier Millionnaire',adresse:'Bd du 7 Décembre',tel:'0303112233',email:'siloe.yam@eeadci.ci',annee:'1987',statut:'Église autonome',pasteurNom:"Pasteur N'Goran Sylvestre",pasteurTel:'0101667788',pasteurDate:'2003-09-01',pasteurStatut:'ordonné',adjointNom:'Pasteur Brou Théophile',adjointTel:'0102778899',adjointDate:'2018-04-10',adjointStatut:'non ordonné',patr1Nom:'Diacre Akossi Bernard',patr1Contact:'0102889900',patr2Nom:'Frère Amani Georges',patr2Contact:'0102990011',baptises:'650',adherents:'120',culte:'780',hommes:'300',femmes:'340',jeunes:'100',enfants:'60',lieuOccupation:"Propriété de l'Église",capacite:'900',superficie:'2500 m²',infrastructures:['Temple','Bureau pastoral','École','Logement pastoral'],infraAutre:'Parking 50 places',titreFoncier:'Oui',titreNum:'TF-YAM-00089',autorites:'Oui',vieAdmin:'Oui',observations:'École primaire active, 320 élèves.',delegue:'Pasteur Assemian Philipe',dateValid:'2024-09-20',visa:'Bureau Région Centre',createdAt:'20/09/2024',gps:'6.8270, -5.2893'},
+      {id:'e4',nom:'Assemblée de Dieu Jérusalem Céleste',temple:'Temple JC',region:'Région Ouest',district:'District Man',commune:'Man',quartier:'Dièoulabougou',adresse:'Rue de la Paix, Man',tel:'0303334455',email:'',annee:'2005',statut:'Annexe',pasteurNom:'Pasteur Zéo Henri',pasteurTel:'0505223344',pasteurDate:'2020-06-01',pasteurStatut:'non ordonné',adjointNom:'',adjointTel:'',adjointDate:'',adjointStatut:'',patr1Nom:'Frère Lah Clément',patr1Contact:'0505112233',patr2Nom:'',patr2Contact:'',baptises:'95',adherents:'30',culte:'125',hommes:'45',femmes:'55',jeunes:'20',enfants:'10',lieuOccupation:'Don',capacite:'150',superficie:'300 m²',infrastructures:['Temple'],infraAutre:'',titreFoncier:'Non',titreNum:'',autorites:'Oui',vieAdmin:'Non',observations:'Dossier titre foncier en cours.',delegue:'Pasteur Gbalé Joseph',dateValid:'2024-08-15',visa:'Bureau Région Ouest',createdAt:'15/08/2024',gps:'7.4124, -7.5543'},
+      {id:'e5',nom:'Assemblée de Dieu Eben-Ezer',temple:'Temple Eben-Ezer',region:'Région Est',district:'District Bondoukou',commune:'Bondoukou',quartier:'Quartier Commerce',adresse:"Avenue de l'Indépendance",tel:'0303556677',email:'eben-ezer.bondoukou@eeadci.ci',annee:'1998',statut:'Église autonome',pasteurNom:'Pasteur Traoré Moussa',pasteurTel:'0101889900',pasteurDate:'2012-02-14',pasteurStatut:'ordonné',adjointNom:'Pasteur Sawadogo Paul',adjointTel:'0102990011',adjointDate:'2021-01-01',adjointStatut:'non ordonné',patr1Nom:'Frère Bakayoko Michel',patr1Contact:'0101001122',patr2Nom:'Sœur Coulibaly Fatou',patr2Contact:'0102112233',baptises:'310',adherents:'75',culte:'385',hommes:'145',femmes:'160',jeunes:'60',enfants:'35',lieuOccupation:"Propriété de l'Église",capacite:'450',superficie:'900 m²',infrastructures:['Temple','Bureau pastoral','Église annexe'],infraAutre:'',titreFoncier:'Oui',titreNum:'TF-BOND-00231',autorites:'Oui',vieAdmin:'Oui',observations:'Église annexe active à Transua.',delegue:'Pasteur Koné Siaka',dateValid:'2024-07-12',visa:'Bureau Région Est',createdAt:'12/07/2024',gps:'8.0408, -2.8000'},
+      {id:'e6',nom:'Assemblée de Dieu Shalom',temple:'Temple Shalom',region:'Région Nord',district:'District Korhogo',commune:'Korhogo',quartier:'Résidentiel',adresse:'Rue des Manguiers',tel:'0303778899',email:'',annee:'2011',statut:"Poste d'évangélisation",pasteurNom:'Évangéliste Fofana Adama',pasteurTel:'0707112233',pasteurDate:'2022-01-01',pasteurStatut:'non ordonné',adjointNom:'',adjointTel:'',adjointDate:'',adjointStatut:'',patr1Nom:'Frère Soro David',patr1Contact:'0707223344',patr2Nom:'',patr2Contact:'',baptises:'45',adherents:'20',culte:'65',hommes:'22',femmes:'28',jeunes:'12',enfants:'8',lieuOccupation:'Prêt',capacite:'80',superficie:'150 m²',infrastructures:['Temple'],infraAutre:'Local prêté par la mairie',titreFoncier:'Non',titreNum:'',autorites:'Oui',vieAdmin:'Non',observations:'Projet autonomie 2026.',delegue:'Pasteur Coulibaly Abou',dateValid:'2024-06-01',visa:'Bureau Région Nord',createdAt:'01/06/2024',gps:'9.4583, -5.6333'}
+    ];
+    localStorage.setItem('eeadci-eglises',JSON.stringify(eg));
+    eglises=eg;
+  }
+  if(!localStorage.getItem('eeadci-parcelles')){
+    var pa=[
+      {id:'p1',eglise:'Assemblée de Dieu Bethel',code:'PARC-ABJ-001',regionEEADCI:'Région Abidjan Sud',delegue1Nom:'Pasteur Bah Mamadou',delegue1Contact:'0101556677',commune:'Marcory',quartier:'Zone 4C',lot:'Lot 147 Ilot 32',superficie:'600 m²',gps:'5.3071, -4.0045',natureTerrain:'Terrain urbain',statutJuridique:'Propriété EEADCI',acd:'Non',attestation:'Oui',dateAcq:'2018-04-15',financement:'Dons',modeAcq:'Achat',occupation:'Terrain nu',duree:'6 ans',occupants:'Non',observations:'Terrain délimité. Attente financement construction.',recommandations:['Vérification du titre foncier','Régularisation administrative'],createdAt:'10/11/2024'},
+      {id:'p2',eglise:'Assemblée de Dieu Maranatha',code:'PARC-ABJ-002',regionEEADCI:'Région Abidjan Nord',commune:'Abobo',quartier:'PK 18',lot:'Lot 22 Ilot 8B',superficie:'1 200 m²',gps:'5.4302, -4.0211',natureTerrain:'Terrain urbain',statutJuridique:'Don',acd:'Non',attestation:'Non',dateAcq:'2012-07-20',financement:'Dons',modeAcq:'Donation',occupation:'Clôturé',duree:'12 ans',occupants:'Non',observations:"Don d'un fidèle, aucune documentation officielle.",recommandations:['Régularisation administrative'],createdAt:'05/10/2024'},
+      {id:'p3',eglise:'Assemblée de Dieu Siloé',code:'PARC-CTR-001',regionEEADCI:'Région Centre',commune:'Yamoussoukro',quartier:'Habitat',lot:'Lot 305 Ilot 14',titreNum:'TF-YAM-00312',superficie:'3 500 m²',gps:'6.8145, -5.2756',natureTerrain:'Terrain urbain',statutJuridique:'Propriété EEADCI',acd:'Oui',acdRef:'TF-YAM-00312',attestation:'Oui',dateAcq:'2005-11-30',financement:'Fonds propres',modeAcq:'Achat',occupation:'Début de fondation',duree:'3 ans',occupants:'Non',observations:'Fondations coulées pour complexe éducatif. Arrêt 2021.',recommandations:['Mise en demeure de mise en valeur'],createdAt:'20/09/2024'},
+      {id:'p4',eglise:'Assemblée de Dieu Eben-Ezer',code:'PARC-EST-001',regionEEADCI:'Région Est',commune:'Bondoukou',quartier:'Extension Nord',lot:'Lot 88',superficie:'5 000 m²',gps:'8.0520, -2.7934',natureTerrain:'Terrain rural',statutJuridique:'Bail',acd:'Non',attestation:'Oui',dateAcq:'2010-03-01',financement:'Fonds propres',modeAcq:'Attribution administrative',occupation:'Exploitation agricole partielle',duree:'3 ans',occupants:'Oui',observations:'Bail échu 2021. Occupants informels à régulariser.',recommandations:['Mise en demeure de mise en valeur','Vérification du titre foncier','Régularisation administrative'],createdAt:'12/07/2024'},
+      {id:'p5',eglise:'Assemblée de Dieu Jérusalem Céleste',code:'PARC-OUE-001',regionEEADCI:'Région Ouest',commune:'Man',quartier:'Dièoulabougou',lot:'Parcelle 14',superficie:'800 m²',gps:'7.4210, -7.5621',natureTerrain:'Terrain urbain',statutJuridique:'Don',acd:'Non',attestation:'Oui',dateAcq:'2020-01-10',financement:'Dons',modeAcq:'Donation',occupation:'Terrain nu',duree:'4 ans',occupants:'Non',observations:'Don récent documenté par attestation villageoise.',recommandations:['Régularisation administrative'],createdAt:'15/08/2024'}
+    ];
+    localStorage.setItem('eeadci-parcelles',JSON.stringify(pa));
+    parcelles=pa;
+  }
+  if(!localStorage.getItem('eeadci-inventaires')){
+    var inv=[
+      {id:'i1',eglise:'Assemblée de Dieu Siloé',region:'Région Centre',date:'2024-09-15',agent:'Diacre Akossi Bernard',createdAt:'15/09/2024',
+       'mobilier-culte':[{label:'Chaises plastique',qty:500,etat:'Bon état',proprio:'EEADCI',valeur:2500000,obs:''},{label:'Bancs bois',qty:80,etat:'État moyen',proprio:'EEADCI',valeur:4000000,obs:'20 bancs à réparer'},{label:'Tables pliantes',qty:30,etat:'Bon état',proprio:'EEADCI',valeur:900000,obs:''},{label:'Pupitre pasteur',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:200000,obs:''},{label:'Tapis allée centrale',qty:3,etat:'État moyen',proprio:'EEADCI',valeur:180000,obs:'À renouveler'}],
+       'mobilier-bureau':[{label:'Bureau directeur',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:350000,obs:''},{label:'Chaises bureau',qty:6,etat:'Bon état',proprio:'EEADCI',valeur:180000,obs:''},{label:'Armoire classement',qty:3,etat:'Bon état',proprio:'EEADCI',valeur:450000,obs:''}],
+       'instruments':[{label:'Piano électronique',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:1500000,obs:'Yamaha PSR'},{label:'Guitare électrique',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:600000,obs:''},{label:'Guitare basse',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:350000,obs:''},{label:'Batterie acoustique',qty:1,etat:'État moyen',proprio:'EEADCI',valeur:800000,obs:'Cymbale fêlée'},{label:'Djembe / tam-tam',qty:4,etat:'Bon état',proprio:'EEADCI',valeur:200000,obs:''}],
+       'sono':[{label:'Table de mixage',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:900000,obs:'Soundcraft 16ch'},{label:'Amplificateur',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:600000,obs:''},{label:'Enceintes / baffles',qty:6,etat:'Bon état',proprio:'EEADCI',valeur:1800000,obs:''},{label:'Microphones filaires',qty:8,etat:'Bon état',proprio:'EEADCI',valeur:400000,obs:''},{label:'Microphones sans fil',qty:4,etat:'Bon état',proprio:'EEADCI',valeur:800000,obs:''},{label:'Vidéoprojecteur',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:700000,obs:'Epson XGA'}],
+       'electrique':[{label:'Groupe électrogène',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:4000000,obs:'15 kVA et 10 kVA'},{label:'Climatiseur',qty:4,etat:'Bon état',proprio:'EEADCI',valeur:2400000,obs:'Bureaux et sacristie'},{label:'Ventilateurs',qty:20,etat:'État moyen',proprio:'EEADCI',valeur:600000,obs:''}],
+       'vehicules':[{label:'Minibus / van',qty:1,etat:'État moyen',proprio:'EEADCI',valeur:8000000,obs:'Toyota Hiace 2015'}],
+       'informatique':[{label:'Ordinateur de bureau',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:700000,obs:''},{label:'Imprimante',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:300000,obs:''}],
+       'cuisine':[{label:'Réfrigérateur',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:400000,obs:''},{label:'Tables réception',qty:20,etat:'Bon état',proprio:'EEADCI',valeur:400000,obs:''},{label:'Chaises réception',qty:100,etat:'Bon état',proprio:'EEADCI',valeur:500000,obs:''}],
+       'autres':[{label:'Tentes / chapiteau',qty:2,etat:'État moyen',proprio:'EEADCI',valeur:600000,obs:''},{label:'Extincteur',qty:4,etat:'Bon état',proprio:'EEADCI',valeur:120000,obs:''}],
+       observations:'Priorité : remplacer bancs abîmés, réviser le minibus.',sigResp:'Diacre Akossi Bernard',sigPasteur:"Pasteur N'Goran Sylvestre",sigDate:'2024-09-20'},
+      {id:'i2',eglise:'Assemblée de Dieu Bethel',region:'Région Abidjan Sud',date:'2024-11-05',agent:'Sœur Ahou Reine',createdAt:'05/11/2024',
+       'mobilier-culte':[{label:'Chaises plastique',qty:400,etat:'Bon état',proprio:'EEADCI',valeur:2000000,obs:''},{label:'Bancs bois',qty:50,etat:'Bon état',proprio:'EEADCI',valeur:2500000,obs:''},{label:'Tentures / rideaux',qty:12,etat:'État moyen',proprio:'EEADCI',valeur:360000,obs:'À renouveler'}],
+       'mobilier-bureau':[{label:'Bureau directeur',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:600000,obs:''},{label:'Armoire classement',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:300000,obs:''}],
+       'instruments':[{label:'Piano électronique',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:3000000,obs:'Yamaha et Roland'},{label:'Guitare électrique',qty:3,etat:'Bon état',proprio:'EEADCI',valeur:900000,obs:''},{label:'Batterie acoustique',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:1200000,obs:''},{label:'Trompette',qty:2,etat:'Bon état',proprio:'Don fidèle',valeur:500000,obs:'Don famille Kouassi'}],
+       'sono':[{label:'Table de mixage',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:1200000,obs:'Behringer 32ch'},{label:'Enceintes / baffles',qty:8,etat:'Bon état',proprio:'EEADCI',valeur:2400000,obs:''},{label:'Microphones sans fil',qty:6,etat:'Bon état',proprio:'EEADCI',valeur:1200000,obs:''}],
+       'electrique':[{label:'Groupe électrogène',qty:1,etat:'Bon état',proprio:'EEADCI',valeur:3500000,obs:'20 kVA Perkins'},{label:'Climatiseur',qty:6,etat:'Bon état',proprio:'EEADCI',valeur:3600000,obs:''}],
+       'vehicules':[],
+       'informatique':[{label:'Ordinateur de bureau',qty:3,etat:'Bon état',proprio:'EEADCI',valeur:1050000,obs:''},{label:'Photocopieuse',qty:1,etat:'État moyen',proprio:'EEADCI',valeur:500000,obs:'Tambour à remplacer'}],
+       'cuisine':[{label:'Réfrigérateur',qty:2,etat:'Bon état',proprio:'EEADCI',valeur:800000,obs:''},{label:'Tables réception',qty:15,etat:'Bon état',proprio:'EEADCI',valeur:750000,obs:''},{label:'Chaises réception',qty:120,etat:'Bon état',proprio:'EEADCI',valeur:1200000,obs:''}],
+       'autres':[{label:'Tentes / chapiteau',qty:3,etat:'Bon état',proprio:'EEADCI',valeur:900000,obs:''},{label:'Extincteur',qty:6,etat:'Bon état',proprio:'EEADCI',valeur:180000,obs:''}],
+       observations:'Renouveler rideaux nef, réviser photocopieuse.',sigResp:'Frère Konan Germain',sigPasteur:'Pasteur Kouassi Jean-Baptiste',sigDate:'2024-11-10'}
+    ];
+    localStorage.setItem('eeadci-inventaires',JSON.stringify(inv));
+    inventaires=inv;
+  }
+})();
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+eglises    = JSON.parse(localStorage.getItem('eeadci-eglises')     || '[]');
+parcelles  = JSON.parse(localStorage.getItem('eeadci-parcelles')   || '[]');
+inventaires= JSON.parse(localStorage.getItem('eeadci-inventaires') || '[]');
+
+// Set banner logo
+var bannerLogo = document.getElementById('banner-logo');
+var sidebarLogo = document.querySelector('.brand-logo img');
+if(bannerLogo && sidebarLogo) bannerLogo.src = sidebarLogo.src;
+
+// Robust init: wait for full DOM then render
+function appInit() {
+  updateDashboard();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', appInit);
+} else {
+  appInit();
+}
+</script>
+</body>
+</html>
